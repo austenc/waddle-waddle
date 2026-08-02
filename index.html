@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>Ducks</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,13 +23,14 @@
         <h1 class="splash-title">DUCKS</h1>
         <p class="splash-tag">Waddle the park. Quack without shame.</p>
         <button type="button" id="start-btn" class="splash-btn">Start waddling</button>
-        <p class="splash-enter">or press Enter</p>
+        <p class="splash-enter">or press Enter · tap on phones</p>
       </div>
     </div>
 
     <div id="hud" class="hud-hidden" aria-hidden="true">
       <div class="brand">DUCKS</div>
-      <div class="hint">WASD / arrows to waddle · Space to quack</div>
+      <div class="hint hint-desktop">WASD / arrows to waddle · Space to quack</div>
+      <div class="hint hint-mobile">Stick to waddle · HONK to quack</div>
     </div>
 
     <div id="app"></div>

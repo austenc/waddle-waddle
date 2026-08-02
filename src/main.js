@@ -3,6 +3,7 @@ import { createWorld } from './world.js';
 import { createDuck } from './duck.js';
 import { createControls } from './controls.js';
 import { createHonk } from './honk.js';
+import { createTouchControls } from './touch.js';
 
 const SPEED = 5.2;
 
@@ -31,6 +32,7 @@ duck.setPosition(14, 0, false);
 duck.setFacing(-Math.PI / 2);
 
 const controls = createControls();
+const touch = createTouchControls(controls);
 const honk = createHonk();
 
 let playing = false;
@@ -103,6 +105,7 @@ function startGame() {
   splash.classList.add('is-gone');
   hud.classList.remove('hud-hidden');
   hud.setAttribute('aria-hidden', 'false');
+  touch.setActive(true);
   honk.unlock();
 }
 
