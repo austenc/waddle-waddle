@@ -4,6 +4,8 @@ A tiny voxel-style Three.js game where you are a mallard in a park.
 
 ## Play
 
+**Live:** [austenc.github.io/waddle-waddle](https://austenc.github.io/waddle-waddle/)
+
 ```bash
 npm install
 npm run dev
