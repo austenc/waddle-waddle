@@ -1,0 +1,183 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --sky: #87b8d8;
+  --grass: #3d6b34;
+  --leaf: #1f4d28;
+  --cream: #f3efe4;
+  --ink: #16301c;
+  --btn: #e8a020;
+  --btn-ink: #2a1a05;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--sky);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* —— Splash —— */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  transition: opacity 0.55s ease, visibility 0.55s ease;
+}
+
+#splash.is-gone {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.splash-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 42%, rgba(14, 36, 20, 0.55), transparent 72%),
+    linear-gradient(180deg, rgba(14, 36, 20, 0.45) 0%, rgba(14, 36, 20, 0.62) 40%, rgba(14, 36, 20, 0.78) 100%);
+}
+
+.splash-panel {
+  position: relative;
+  text-align: center;
+  color: var(--cream);
+  padding: 2.25rem 2rem 2rem;
+  max-width: 28rem;
+  border-radius: 1.25rem;
+  background: rgba(14, 36, 20, 0.42);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28);
+  animation: splash-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes splash-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.splash-eyebrow {
+  font-family: "Nunito", sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 0.65rem;
+}
+
+.splash-title {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: clamp(4rem, 14vw, 7.5rem);
+  letter-spacing: 0.08em;
+  line-height: 0.9;
+  color: var(--cream);
+  text-shadow:
+    0 4px 0 rgba(22, 48, 28, 0.35),
+    0 18px 40px rgba(0, 0, 0, 0.25);
+  margin-bottom: 0.85rem;
+}
+
+.splash-tag {
+  font-family: "Nunito", sans-serif;
+  font-weight: 500;
+  font-size: 1.05rem;
+  opacity: 0.88;
+  margin-bottom: 1.75rem;
+}
+
+.splash-btn {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
+  color: var(--btn-ink);
+  background: var(--btn);
+  border: none;
+  border-radius: 999px;
+  padding: 0.85rem 1.85rem;
+  cursor: pointer;
+  box-shadow:
+    0 4px 0 #b07810,
+    0 12px 28px rgba(0, 0, 0, 0.22);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.splash-btn:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 0 #b07810,
+    0 16px 32px rgba(0, 0, 0, 0.26);
+}
+
+.splash-btn:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 2px 0 #b07810,
+    0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.splash-enter {
+  font-family: "Nunito", sans-serif;
+  font-size: 0.8rem;
+  opacity: 0.55;
+  margin-top: 0.9rem;
+}
+
+/* —— In-game HUD —— */
+#hud {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 10;
+  pointer-events: none;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: "Nunito", sans-serif;
+  color: var(--ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  transition: opacity 0.4s ease;
+}
+
+#hud.hud-hidden {
+  opacity: 0;
+}
+
+.brand {
+  font-family: "Fredoka", sans-serif;
+  font-size: clamp(1.4rem, 2.8vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  line-height: 1;
+}
+
+.hint {
+  font-size: 0.85rem;
+  font-weight: 500;
+  opacity: 0.75;
+  letter-spacing: 0.02em;
+}
