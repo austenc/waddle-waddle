@@ -34,6 +34,9 @@ duck.setFacing(-Math.PI / 2);
 const controls = createControls();
 const touch = createTouchControls(controls);
 const honk = createHonk();
+controls.onHonkGesture = () => {
+  honk.unlock();
+};
 
 let playing = false;
 
@@ -106,6 +109,7 @@ function startGame() {
   hud.classList.remove('hud-hidden');
   hud.setAttribute('aria-hidden', 'false');
   touch.setActive(true);
+  // Must run inside this tap/click — unlocks Web Audio + HTMLAudio on iOS
   honk.unlock();
 }
 

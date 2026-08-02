@@ -93,6 +93,8 @@ export function createTouchControls(controls) {
     honkPad.setPointerCapture(e.pointerId);
     honkPad.classList.add('is-held');
     controls.setTouchHonk(true);
+    // Extra unlock on the honk gesture itself (iOS Safari)
+    if (typeof controls.onHonkGesture === 'function') controls.onHonkGesture();
   });
 
   const stopHonk = () => {
