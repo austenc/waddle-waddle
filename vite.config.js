@@ -1,8 +1,11 @@
 import { defineConfig } from 'vite';
 
+const pagesBase = process.env.PAGES_BASE
+  || (process.env.GITHUB_PAGES === '1' ? '/waddle-waddle/' : '/');
+
 export default defineConfig({
-  // GitHub Pages project site: https://austenc.github.io/waddle-waddle/
-  base: process.env.GITHUB_PAGES === '1' ? '/waddle-waddle/' : '/',
+  // Main: /waddle-waddle/ · Fly preview: /waddle-waddle/fly/
+  base: pagesBase,
   server: {
     port: 5173,
     open: true,

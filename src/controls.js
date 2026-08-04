@@ -1,15 +1,23 @@
-/** Keyboard + on-screen touch controls for waddle + honk. */
+/** Keyboard + on-screen touch controls for waddle, fly, and honk. */
 export function createControls() {
   const keys = new Set();
   let touchX = 0;
   let touchZ = 0;
   let touchActive = false;
   let touchHonkDown = false;
+  let touchFlyToggle = false;
+  let touchAscend = false;
+  let touchDescend = false;
   let honkHeld = false;
+  let flyToggleHeld = false;
 
   const onDown = (e) => {
     keys.add(e.code);
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+    if (
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyF', 'KeyE', 'KeyQ'].includes(
+        e.code,
+      )
+    ) {
       e.preventDefault();
     }
   };
@@ -53,6 +61,19 @@ export function createControls() {
       touchHonkDown = down;
     },
 
+    /** Edge-trigger request from the FLY pad. */
+    requestTouchFlyToggle() {
+      touchFlyToggle = true;
+    },
+
+    setTouchAscend(down) {
+      touchAscend = down;
+    },
+
+    setTouchDescend(down) {
+      touchDescend = down;
+    },
+
     /** Normalized move vector in XZ (x right, z: W=-1). */
     getMoveVector() {
       let x = 0;
@@ -75,8 +96,47 @@ export function createControls() {
       return { x, z, moving: len > 0 };
     },
 
+    /** +1 ascend, -1 descend, 0 none */
+    getVertical() {
+      let v = 0;
+      if (keys.has('KeyE') || keys.has('Space') || touchAscend) v += 1;
+      if (keys.has('KeyQ') || keys.has('ShiftLeft') || keys.has('ShiftRight') || touchDescend) {
+        v -= 1;
+      }
+      return Math.max(-1, Math.min(1, v));
+    },
+
+    consumeFlyToggle() {
+      const pressed = keys.has('KeyF') || touchFlyToggle;
+      touchFlyToggle = false;
+      if (pressed) {
+        if (!flyToggleHeld) {
+          flyToggleHeld = true;
+          return true;
+        }
+        return false;
+      }
+      flyToggleHeld = keys.has('KeyF');
+      return false;
+    },
+
     consumeHonk() {
-      const pressed = keys.has('Space') || keys.has('KeyH') || touchHonkDown;
+      // In air, Space is reserved for climb — H / HONK pad still quack
+      const pressed = keys.has('KeyH') || touchHonkDown || keys.has('Space');
+      if (pressed) {
+        if (!honkHeld) {
+          honkHeld = true;
+          return true;
+        }
+        return false;
+      }
+      honkHeld = false;
+      return false;
+    },
+
+    /** Honk while flying ignores Space (used to climb). */
+    consumeHonkFlying() {
+      const pressed = keys.has('KeyH') || touchHonkDown;
       if (pressed) {
         if (!honkHeld) {
           honkHeld = true;

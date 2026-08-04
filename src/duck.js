@@ -71,10 +71,13 @@ export function createDuck() {
 
   const state = {
     moving: false,
+    flying: false,
     waddlePhase: 0,
+    flapPhase: 0,
     honkTimer: 0,
     bob: 0,
     baseY: 0,
+    altitude: 0,
   };
 
   return {
@@ -88,50 +91,105 @@ export function createDuck() {
     setPosition(x, z, inWater = false) {
       root.position.x = x;
       root.position.z = z;
-      state.baseY = inWater ? -0.12 : 0;
+      if (!state.flying) {
+        state.baseY = inWater ? -0.12 : 0;
+        state.altitude = state.baseY;
+      }
     },
 
-    /** Steady ground height for the camera — ignores hop / bob. */
+    setAltitude(y) {
+      state.altitude = y;
+      state.baseY = y;
+    },
+
+    setFlying(flying) {
+      state.flying = flying;
+      if (!flying) {
+        // Snap back toward ground altitude; caller sets water offset via setPosition
+        state.altitude = Math.min(state.altitude, 0);
+      }
+    },
+
+    isFlying() {
+      return state.flying;
+    },
+
+    getAltitude() {
+      return state.altitude;
+    },
+
+    /** Steady height for the camera — ignores hop / bob, includes flight altitude. */
     getFollowY() {
-      return state.baseY;
+      return state.flying ? state.altitude : state.baseY;
     },
 
     setFacing(angle) {
       root.rotation.y = angle;
     },
 
-    /** Extra cartoony side-lean, hop, and foot flap while moving */
-    update(dt, moving) {
+    /**
+     * Ground: cartoony waddle. Air: flapping wings + gentle bank.
+     * @param {number} vertical - climb input while flying (-1..1), unused on ground
+     */
+    update(dt, moving, flying = false, vertical = 0) {
       state.moving = moving;
+      state.flying = flying;
       let yOffset = 0;
 
-      if (moving) {
+      if (flying) {
+        state.flapPhase += dt * (16 + Math.abs(vertical) * 6);
+        const flap = Math.sin(state.flapPhase);
+        const flapAbs = Math.abs(flap);
+
+        // Big wing flaps
+        leftWing.rotation.z = 0.55 + flap * 0.75;
+        rightWing.rotation.z = -0.55 - flap * 0.75;
+        leftWing.rotation.x = flap * 0.15;
+        rightWing.rotation.x = flap * 0.15;
+
+        // Bank into strafe / pitch with climb
+        root.rotation.z *= 0.85;
+        root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, vertical * -0.35, 1 - Math.exp(-8 * dt));
+        if (moving) {
+          // slight bank from movement direction change is handled via existing z decay;
+          // add a gentle bob while cruising
+          root.rotation.z = Math.sin(state.flapPhase * 0.5) * 0.08;
+        }
+
+        // Tuck feet
+        leftFoot.rotation.x = THREE.MathUtils.lerp(leftFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
+        rightFoot.rotation.x = THREE.MathUtils.lerp(rightFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
+        leftFoot.position.y = 0.18;
+        rightFoot.position.y = 0.18;
+
+        root.scale.set(1, 1, 1);
+        yOffset = flapAbs * 0.04;
+        head.position.x *= 0.9;
+        neck.position.x *= 0.9;
+        head.position.y = 1.2;
+        neck.position.y = 0.95;
+      } else if (moving) {
         state.waddlePhase += dt * 13;
         const swing = Math.sin(state.waddlePhase);
         const hop = Math.abs(Math.sin(state.waddlePhase * 2));
 
-        // Big side lean + tiny pitch tip
         root.rotation.z = swing * 0.32;
         root.rotation.x = hop * 0.08;
-
-        // Bouncy hop
         yOffset = hop * 0.16;
 
-        // Squash & stretch on each step
         const squash = 1 - hop * 0.12;
         root.scale.set(1 + (1 - squash) * 0.2, squash, 1 + (1 - squash) * 0.08);
 
-        // Exaggerated feet
         leftFoot.rotation.x = swing * 1.05;
         rightFoot.rotation.x = -swing * 1.05;
         leftFoot.position.y = 0.12 + Math.max(0, swing) * 0.08;
         rightFoot.position.y = 0.12 + Math.max(0, -swing) * 0.08;
 
-        // Wing flaps
         leftWing.rotation.z = 0.25 + hop * 0.35;
         rightWing.rotation.z = -0.25 - hop * 0.35;
+        leftWing.rotation.x *= 0.85;
+        rightWing.rotation.x *= 0.85;
 
-        // Head counters the body lean (looks more alive)
         head.position.y = 1.2 + hop * 0.05;
         head.position.x = -swing * 0.06;
         neck.position.y = 0.95 + hop * 0.03;
@@ -148,6 +206,8 @@ export function createDuck() {
         rightFoot.position.y += (0.12 - rightFoot.position.y) * 0.2;
         leftWing.rotation.z *= 0.88;
         rightWing.rotation.z *= 0.88;
+        leftWing.rotation.x *= 0.88;
+        rightWing.rotation.x *= 0.88;
         head.position.x *= 0.85;
         neck.position.x *= 0.85;
         state.bob += dt * 2.2;
@@ -166,7 +226,7 @@ export function createDuck() {
         beak.scale.set(1, 1, 1);
       }
 
-      root.position.y = state.baseY + yOffset;
+      root.position.y = (flying ? state.altitude : state.baseY) + yOffset;
     },
 
     triggerHonk() {

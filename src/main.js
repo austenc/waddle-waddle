@@ -6,6 +6,10 @@ import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
 
 const SPEED = 5.2;
+const FLY_SPEED = 7.2;
+const CLIMB_SPEED = 5.5;
+const MAX_ALTITUDE = 28;
+const MIN_FLY_ALTITUDE = 1.4;
 
 const container = document.getElementById('app');
 const splash = document.getElementById('splash');
@@ -39,11 +43,11 @@ controls.onHonkGesture = () => {
 };
 
 let playing = false;
+let flying = false;
 
 const CAM_DIST = 9;
 const CAM_HEIGHT = 5.5;
 const CAM_LOOK_Y = 0.85;
-/** Duck snaps toward move heading quickly; camera yaw trails so you see the side. */
 const DUCK_TURN = 14;
 const CAM_TURN = 2.4;
 
@@ -68,22 +72,39 @@ function lerpAngle(from, to, t) {
   return from + shortestAngleDelta(from, to) * t;
 }
 
+function setFlying(next) {
+  flying = next;
+  duck.setFlying(flying);
+  touch.setFlying(flying);
+  document.body.classList.toggle('is-flying', flying);
+  if (flying) {
+    const takeoff = Math.max(duck.getAltitude(), MIN_FLY_ALTITUDE);
+    duck.setAltitude(takeoff);
+  } else {
+    duck.setAltitude(0);
+    duck.setPosition(
+      duck.root.position.x,
+      duck.root.position.z,
+      world.isInWater(duck.root.position.x, duck.root.position.z),
+    );
+  }
+}
+
 function updateCamera(dt) {
-  // Camera yaw lazily follows the duck — lag lets you see the mallard's side
   camYaw = lerpAngle(camYaw, duckYaw, 1 - Math.exp(-CAM_TURN * dt));
 
-  // Follow a stable height so the waddle hop doesn't shake the camera
   const followY = duck.getFollowY();
+  const camHeight = flying ? CAM_HEIGHT + 1.5 : CAM_HEIGHT;
+  const camDist = flying ? CAM_DIST + 2 : CAM_DIST;
 
   desiredCam.set(
-    duck.root.position.x - Math.sin(camYaw) * CAM_DIST,
-    followY + CAM_HEIGHT,
-    duck.root.position.z - Math.cos(camYaw) * CAM_DIST,
+    duck.root.position.x - Math.sin(camYaw) * camDist,
+    followY + camHeight,
+    duck.root.position.z - Math.cos(camYaw) * camDist,
   );
   camPos.lerp(desiredCam, 1 - Math.exp(-6 * dt));
   camera.position.copy(camPos);
 
-  // Look at the duck, biased a little along duck facing (not cam) for side profile
   const lookBlend = 1.4;
   camLook.set(
     duck.root.position.x + Math.sin(duckYaw) * lookBlend,
@@ -109,7 +130,6 @@ function startGame() {
   hud.classList.remove('hud-hidden');
   hud.setAttribute('aria-hidden', 'false');
   touch.setActive(true);
-  // Must run inside this tap/click — unlocks Web Audio + HTMLAudio on iOS
   honk.unlock();
 }
 
@@ -128,19 +148,22 @@ function tick() {
   world.update(t);
 
   let moving = false;
+  let vertical = 0;
 
   if (playing) {
+    if (controls.consumeFlyToggle()) {
+      setFlying(!flying);
+    }
+
     const input = controls.getMoveVector();
+    vertical = flying ? controls.getVertical() : 0;
 
     if (input.moving) {
-      // Move relative to camera yaw (stable), not raw camera matrix
       const fx = Math.sin(camYaw);
       const fz = Math.cos(camYaw);
       const rx = Math.cos(camYaw);
       const rz = -Math.sin(camYaw);
 
-      // input.z: W=-1 (forward), S=+1; input.x: A=-1, D=+1
-      // Strafe uses camera-right; negate x so A/D match screen left/right
       moveDir.set(fx * -input.z - rx * input.x, 0, fz * -input.z - rz * input.x);
 
       if (moveDir.lengthSq() > 1e-6) {
@@ -149,14 +172,20 @@ function tick() {
         duckYaw = lerpAngle(duckYaw, targetYaw, 1 - Math.exp(-DUCK_TURN * dt));
         duck.setFacing(duckYaw);
 
-        const nx = duck.root.position.x + moveDir.x * SPEED * dt;
-        const nz = duck.root.position.z + moveDir.z * SPEED * dt;
+        const speed = flying ? FLY_SPEED : SPEED;
+        const nx = duck.root.position.x + moveDir.x * speed * dt;
+        const nz = duck.root.position.z + moveDir.z * speed * dt;
         const clampedX = THREE.MathUtils.clamp(nx, -BOUNDS, BOUNDS);
         const clampedZ = THREE.MathUtils.clamp(nz, -BOUNDS, BOUNDS);
-        duck.setPosition(clampedX, clampedZ, world.isInWater(clampedX, clampedZ));
+        if (flying) {
+          duck.root.position.x = clampedX;
+          duck.root.position.z = clampedZ;
+        } else {
+          duck.setPosition(clampedX, clampedZ, world.isInWater(clampedX, clampedZ));
+        }
         moving = true;
       }
-    } else {
+    } else if (!flying) {
       duck.setPosition(
         duck.root.position.x,
         duck.root.position.z,
@@ -164,9 +193,21 @@ function tick() {
       );
     }
 
-    duck.update(dt, moving);
+    if (flying) {
+      let alt = duck.getAltitude() + vertical * CLIMB_SPEED * dt;
+      // Auto-land if you descend to the ground
+      if (alt <= 0.35 && vertical <= 0) {
+        setFlying(false);
+      } else {
+        alt = THREE.MathUtils.clamp(alt, MIN_FLY_ALTITUDE * 0.5, MAX_ALTITUDE);
+        duck.setAltitude(alt);
+      }
+    }
 
-    if (controls.consumeHonk()) {
+    duck.update(dt, moving || (flying && vertical !== 0), flying, vertical);
+
+    const honked = flying ? controls.consumeHonkFlying() : controls.consumeHonk();
+    if (honked) {
       duck.triggerHonk();
       honk.play();
     }
@@ -179,7 +220,7 @@ function tick() {
       duck.root.position.z,
       world.isInWater(duck.root.position.x, duck.root.position.z),
     );
-    duck.update(dt, false);
+    duck.update(dt, false, false, 0);
   }
 
   updateCamera(dt);
@@ -187,7 +228,6 @@ function tick() {
   requestAnimationFrame(tick);
 }
 
-// Seed third-person camera behind the duck
 {
   camYaw = duckYaw;
   camPos.set(
