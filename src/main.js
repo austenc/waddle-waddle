@@ -6,8 +6,8 @@ import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
 
 const SPEED = 5.2;
-const FLY_SPEED = 7.2;
-const CLIMB_SPEED = 5.5;
+const FLY_SPEED = 12.5;
+const CLIMB_SPEED = 11;
 const MAX_ALTITUDE = 28;
 const MIN_FLY_ALTITUDE = 1.4;
 
@@ -205,6 +205,10 @@ function tick() {
     }
 
     duck.update(dt, moving || (flying && vertical !== 0), flying, vertical);
+
+    if (flying && controls.consumeBarrelRoll()) {
+      duck.triggerBarrelRoll(1);
+    }
 
     const honked = flying ? controls.consumeHonkFlying() : controls.consumeHonk();
     if (honked) {

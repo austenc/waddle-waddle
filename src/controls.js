@@ -8,8 +8,10 @@ export function createControls() {
   let touchFlyToggle = false;
   let touchAscend = false;
   let touchDescend = false;
+  let touchBarrelRoll = false;
   let honkHeld = false;
   let flyToggleHeld = false;
+  let barrelHeld = false;
 
   const onDown = (e) => {
     keys.add(e.code);
@@ -96,10 +98,10 @@ export function createControls() {
       return { x, z, moving: len > 0 };
     },
 
-    /** +1 ascend, -1 descend, 0 none */
+    /** +1 ascend, -1 descend, 0 none (Space is barrel roll while flying). */
     getVertical() {
       let v = 0;
-      if (keys.has('KeyE') || keys.has('Space') || touchAscend) v += 1;
+      if (keys.has('KeyE') || touchAscend) v += 1;
       if (keys.has('KeyQ') || keys.has('ShiftLeft') || keys.has('ShiftRight') || touchDescend) {
         v -= 1;
       }
@@ -120,8 +122,25 @@ export function createControls() {
       return false;
     },
 
+    requestTouchBarrelRoll() {
+      touchBarrelRoll = true;
+    },
+
+    consumeBarrelRoll() {
+      const pressed = keys.has('Space') || touchBarrelRoll;
+      touchBarrelRoll = false;
+      if (pressed) {
+        if (!barrelHeld) {
+          barrelHeld = true;
+          return true;
+        }
+        return false;
+      }
+      barrelHeld = keys.has('Space');
+      return false;
+    },
+
     consumeHonk() {
-      // In air, Space is reserved for climb — H / HONK pad still quack
       const pressed = keys.has('KeyH') || touchHonkDown || keys.has('Space');
       if (pressed) {
         if (!honkHeld) {
@@ -134,7 +153,7 @@ export function createControls() {
       return false;
     },
 
-    /** Honk while flying ignores Space (used to climb). */
+    /** Honk while flying ignores Space (barrel roll). */
     consumeHonkFlying() {
       const pressed = keys.has('KeyH') || touchHonkDown;
       if (pressed) {

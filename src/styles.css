@@ -354,6 +354,41 @@ canvas {
   transform: scale(1);
 }
 
+.roll-pad {
+  pointer-events: none;
+  touch-action: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(42, 26, 5, 0.35);
+  background: rgba(58, 143, 196, 0.92);
+  color: #f3efe4;
+  font-family: "Fredoka", sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 3px 0 rgba(30, 80, 120, 0.85),
+    0 8px 16px rgba(0, 0, 0, 0.22);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.fly-stack.is-flying .roll-pad {
+  opacity: 1;
+  pointer-events: auto;
+  transform: scale(1);
+}
+
+.roll-pad.is-held {
+  transform: translateY(2px) scale(1);
+}
+
 .fly-pad-label {
   pointer-events: none;
 }

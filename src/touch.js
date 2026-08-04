@@ -17,6 +17,7 @@ export function createTouchControls(controls) {
           <span class="fly-pad-label">FLY</span>
         </button>
         <button type="button" class="alt-pad" id="descend-pad" aria-label="Fly down">DN</button>
+        <button type="button" class="roll-pad" id="roll-pad" aria-label="Barrel roll">ROLL</button>
       </div>
       <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
         <span class="honk-pad-label">HONK</span>
@@ -31,6 +32,7 @@ export function createTouchControls(controls) {
   const flyPad = root.querySelector('#fly-pad');
   const ascendPad = root.querySelector('#ascend-pad');
   const descendPad = root.querySelector('#descend-pad');
+  const rollPad = root.querySelector('#roll-pad');
   const flyStack = root.querySelector('#fly-stack');
 
   const MAX = 46;
@@ -159,6 +161,16 @@ export function createTouchControls(controls) {
 
   bindHoldPad(ascendPad, (d) => controls.setTouchAscend(d));
   bindHoldPad(descendPad, (d) => controls.setTouchDescend(d));
+
+  rollPad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    rollPad.setPointerCapture(e.pointerId);
+    rollPad.classList.add('is-held');
+    controls.requestTouchBarrelRoll();
+  });
+  const stopRoll = () => rollPad.classList.remove('is-held');
+  rollPad.addEventListener('pointerup', stopRoll);
+  rollPad.addEventListener('pointercancel', stopRoll);
 
   root.addEventListener(
     'touchmove',

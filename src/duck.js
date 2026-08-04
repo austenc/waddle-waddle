@@ -78,7 +78,12 @@ export function createDuck() {
     bob: 0,
     baseY: 0,
     altitude: 0,
+    /** 0 = idle; (0,1] = barrel-roll progress */
+    rollT: 0,
+    rollDir: 1,
   };
+
+  const ROLL_DURATION = 0.55;
 
   return {
     root,
@@ -105,8 +110,9 @@ export function createDuck() {
     setFlying(flying) {
       state.flying = flying;
       if (!flying) {
-        // Snap back toward ground altitude; caller sets water offset via setPosition
         state.altitude = Math.min(state.altitude, 0);
+        state.rollT = 0;
+        root.rotation.z = 0;
       }
     },
 
@@ -114,11 +120,14 @@ export function createDuck() {
       return state.flying;
     },
 
+    isBarrelRolling() {
+      return state.rollT > 0;
+    },
+
     getAltitude() {
       return state.altitude;
     },
 
-    /** Steady height for the camera — ignores hop / bob, includes flight altitude. */
     getFollowY() {
       return state.flying ? state.altitude : state.baseY;
     },
@@ -127,9 +136,16 @@ export function createDuck() {
       root.rotation.y = angle;
     },
 
+    triggerBarrelRoll(dir = 1) {
+      if (!state.flying || state.rollT > 0) return false;
+      state.rollT = 0.0001;
+      state.rollDir = dir >= 0 ? 1 : -1;
+      return true;
+    },
+
     /**
-     * Ground: cartoony waddle. Air: flapping wings + gentle bank.
-     * @param {number} vertical - climb input while flying (-1..1), unused on ground
+     * Ground: cartoony waddle. Air: flapping wings + optional barrel roll.
+     * @param {number} vertical - climb input while flying (-1..1)
      */
     update(dt, moving, flying = false, vertical = 0) {
       state.moving = moving;
@@ -137,26 +153,40 @@ export function createDuck() {
       let yOffset = 0;
 
       if (flying) {
-        state.flapPhase += dt * (16 + Math.abs(vertical) * 6);
+        state.flapPhase += dt * (18 + Math.abs(vertical) * 8);
         const flap = Math.sin(state.flapPhase);
         const flapAbs = Math.abs(flap);
 
-        // Big wing flaps
         leftWing.rotation.z = 0.55 + flap * 0.75;
         rightWing.rotation.z = -0.55 - flap * 0.75;
         leftWing.rotation.x = flap * 0.15;
         rightWing.rotation.x = flap * 0.15;
 
-        // Bank into strafe / pitch with climb
-        root.rotation.z *= 0.85;
-        root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, vertical * -0.35, 1 - Math.exp(-8 * dt));
-        if (moving) {
-          // slight bank from movement direction change is handled via existing z decay;
-          // add a gentle bob while cruising
-          root.rotation.z = Math.sin(state.flapPhase * 0.5) * 0.08;
+        if (state.rollT > 0) {
+          state.rollT += dt / ROLL_DURATION;
+          if (state.rollT >= 1) {
+            state.rollT = 0;
+            root.rotation.z = 0;
+          } else {
+            // Full 360 spin; ease slightly at the ends
+            const t = state.rollT;
+            const eased = t * t * (3 - 2 * t);
+            root.rotation.z = eased * Math.PI * 2 * state.rollDir;
+          }
+          root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, 0, 1 - Math.exp(-10 * dt));
+        } else {
+          root.rotation.x = THREE.MathUtils.lerp(
+            root.rotation.x,
+            vertical * -0.4,
+            1 - Math.exp(-8 * dt),
+          );
+          if (moving) {
+            root.rotation.z = Math.sin(state.flapPhase * 0.5) * 0.1;
+          } else {
+            root.rotation.z *= 0.85;
+          }
         }
 
-        // Tuck feet
         leftFoot.rotation.x = THREE.MathUtils.lerp(leftFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
         rightFoot.rotation.x = THREE.MathUtils.lerp(rightFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
         leftFoot.position.y = 0.18;
