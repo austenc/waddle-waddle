@@ -9,7 +9,9 @@ const SPEED = 5.2;
 const FLY_SPEED = 12.5;
 const CLIMB_SPEED = 11;
 const MAX_ALTITUDE = 28;
-const MIN_FLY_ALTITUDE = 1.4;
+const LAND_ALTITUDE = 0.85;
+const JUMP_VELOCITY = 8.5;
+const GRAVITY = 24;
 
 const container = document.getElementById('app');
 const splash = document.getElementById('splash');
@@ -31,7 +33,6 @@ const BOUNDS = world.bounds;
 const duck = createDuck();
 scene.add(duck.root);
 
-// Start on the path east of the pond, facing into the park (-X toward water)
 duck.setPosition(14, 0, false);
 duck.setFacing(-Math.PI / 2);
 
@@ -44,6 +45,9 @@ controls.onHonkGesture = () => {
 
 let playing = false;
 let flying = false;
+/** Hop / fall velocity while not in free-fly mode. */
+let hopVy = 0;
+let airborne = false;
 
 const CAM_DIST = 9;
 const CAM_HEIGHT = 5.5;
@@ -60,6 +64,10 @@ const desiredCam = new THREE.Vector3();
 const moveDir = new THREE.Vector3();
 
 const clock = new THREE.Clock();
+
+function groundY(x, z) {
+  return world.isInWater(x, z) ? -0.12 : 0;
+}
 
 function shortestAngleDelta(from, to) {
   let d = to - from;
@@ -78,15 +86,16 @@ function setFlying(next) {
   touch.setFlying(flying);
   document.body.classList.toggle('is-flying', flying);
   if (flying) {
-    const takeoff = Math.max(duck.getAltitude(), MIN_FLY_ALTITUDE);
+    airborne = true;
+    hopVy = 0;
+    const takeoff = Math.max(duck.getAltitude(), LAND_ALTITUDE + 0.4);
     duck.setAltitude(takeoff);
   } else {
-    duck.setAltitude(0);
-    duck.setPosition(
-      duck.root.position.x,
-      duck.root.position.z,
-      world.isInWater(duck.root.position.x, duck.root.position.z),
-    );
+    hopVy = 0;
+    airborne = false;
+    const gy = groundY(duck.root.position.x, duck.root.position.z);
+    duck.setAltitude(gy);
+    duck.setPosition(duck.root.position.x, duck.root.position.z, world.isInWater(duck.root.position.x, duck.root.position.z));
   }
 }
 
@@ -143,20 +152,34 @@ window.addEventListener('keydown', (e) => {
 
 function tick() {
   const dt = Math.min(clock.getDelta(), 0.05);
-  const t = clock.elapsedTime;
 
-  world.update(t);
+  world.update(clock.elapsedTime);
 
   let moving = false;
   let vertical = 0;
 
   if (playing) {
-    if (controls.consumeFlyToggle()) {
-      setFlying(!flying);
-    }
-
     const input = controls.getMoveVector();
     vertical = flying ? controls.getVertical() : 0;
+
+    // Space / JUMP: hop → double-jump fly → barrel roll in air
+    if (controls.consumeJump()) {
+      if (flying) {
+        duck.triggerBarrelRoll(1);
+      } else if (airborne) {
+        setFlying(true);
+      } else {
+        hopVy = JUMP_VELOCITY;
+        airborne = true;
+      }
+    }
+
+    if (flying && controls.consumeLand()) {
+      setFlying(false);
+    }
+    if (flying && controls.consumeBarrelRoll()) {
+      duck.triggerBarrelRoll(1);
+    }
 
     if (input.moving) {
       const fx = Math.sin(camYaw);
@@ -177,15 +200,14 @@ function tick() {
         const nz = duck.root.position.z + moveDir.z * speed * dt;
         const clampedX = THREE.MathUtils.clamp(nx, -BOUNDS, BOUNDS);
         const clampedZ = THREE.MathUtils.clamp(nz, -BOUNDS, BOUNDS);
-        if (flying) {
-          duck.root.position.x = clampedX;
-          duck.root.position.z = clampedZ;
-        } else {
+        duck.root.position.x = clampedX;
+        duck.root.position.z = clampedZ;
+        if (!flying && !airborne) {
           duck.setPosition(clampedX, clampedZ, world.isInWater(clampedX, clampedZ));
         }
         moving = true;
       }
-    } else if (!flying) {
+    } else if (!flying && !airborne) {
       duck.setPosition(
         duck.root.position.x,
         duck.root.position.z,
@@ -195,23 +217,36 @@ function tick() {
 
     if (flying) {
       let alt = duck.getAltitude() + vertical * CLIMB_SPEED * dt;
-      // Auto-land if you descend to the ground
-      if (alt <= 0.35 && vertical <= 0) {
+      alt = Math.min(alt, MAX_ALTITUDE);
+      // Land when close enough to the ground
+      if (alt <= LAND_ALTITUDE) {
         setFlying(false);
       } else {
-        alt = THREE.MathUtils.clamp(alt, MIN_FLY_ALTITUDE * 0.5, MAX_ALTITUDE);
+        duck.setAltitude(alt);
+      }
+    } else if (airborne) {
+      hopVy -= GRAVITY * dt;
+      let alt = duck.getAltitude() + hopVy * dt;
+      const gy = groundY(duck.root.position.x, duck.root.position.z);
+      if (alt <= gy) {
+        alt = gy;
+        hopVy = 0;
+        airborne = false;
+        duck.setAltitude(alt);
+        duck.setPosition(
+          duck.root.position.x,
+          duck.root.position.z,
+          world.isInWater(duck.root.position.x, duck.root.position.z),
+        );
+      } else {
         duck.setAltitude(alt);
       }
     }
 
-    duck.update(dt, moving || (flying && vertical !== 0), flying, vertical);
+    const animMoving = moving || (flying && vertical !== 0) || (airborne && !flying);
+    duck.update(dt, animMoving, flying, vertical, airborne && !flying);
 
-    if (flying && controls.consumeBarrelRoll()) {
-      duck.triggerBarrelRoll(1);
-    }
-
-    const honked = flying ? controls.consumeHonkFlying() : controls.consumeHonk();
-    if (honked) {
+    if (controls.consumeHonk()) {
       duck.triggerHonk();
       honk.play();
     }
@@ -224,7 +259,7 @@ function tick() {
       duck.root.position.z,
       world.isInWater(duck.root.position.x, duck.root.position.z),
     );
-    duck.update(dt, false, false, 0);
+    duck.update(dt, false, false, 0, false);
   }
 
   updateCamera(dt);

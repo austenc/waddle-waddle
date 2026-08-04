@@ -1,24 +1,34 @@
-/** Keyboard + on-screen touch controls for waddle, fly, and honk. */
+/** Keyboard + on-screen touch controls for waddle, jump/fly, and honk. */
 export function createControls() {
   const keys = new Set();
   let touchX = 0;
   let touchZ = 0;
   let touchActive = false;
   let touchHonkDown = false;
-  let touchFlyToggle = false;
+  let touchJump = false;
+  let touchLand = false;
   let touchAscend = false;
   let touchDescend = false;
   let touchBarrelRoll = false;
   let honkHeld = false;
-  let flyToggleHeld = false;
+  let jumpHeld = false;
+  let landHeld = false;
   let barrelHeld = false;
 
   const onDown = (e) => {
     keys.add(e.code);
     if (
-      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyF', 'KeyE', 'KeyQ'].includes(
-        e.code,
-      )
+      [
+        'ArrowUp',
+        'ArrowDown',
+        'ArrowLeft',
+        'ArrowRight',
+        'Space',
+        'KeyE',
+        'KeyQ',
+        'ShiftLeft',
+        'ShiftRight',
+      ].includes(e.code)
     ) {
       e.preventDefault();
     }
@@ -38,7 +48,6 @@ export function createControls() {
       return keys.has(code);
     },
 
-    /** Virtual stick: x right, z forward on screen-up (matches WASD: W => z=-1). */
     setTouchMove(x, z) {
       const len = Math.hypot(x, z);
       if (len < 0.12) {
@@ -63,9 +72,12 @@ export function createControls() {
       touchHonkDown = down;
     },
 
-    /** Edge-trigger request from the FLY pad. */
-    requestTouchFlyToggle() {
-      touchFlyToggle = true;
+    requestTouchJump() {
+      touchJump = true;
+    },
+
+    requestTouchLand() {
+      touchLand = true;
     },
 
     setTouchAscend(down) {
@@ -76,7 +88,10 @@ export function createControls() {
       touchDescend = down;
     },
 
-    /** Normalized move vector in XZ (x right, z: W=-1). */
+    requestTouchBarrelRoll() {
+      touchBarrelRoll = true;
+    },
+
     getMoveVector() {
       let x = 0;
       let z = 0;
@@ -98,36 +113,45 @@ export function createControls() {
       return { x, z, moving: len > 0 };
     },
 
-    /** +1 ascend, -1 descend, 0 none (Space is barrel roll while flying). */
+    /** +1 ascend, -1 descend. Left Shift is honk — Right Shift still descends. */
     getVertical() {
       let v = 0;
       if (keys.has('KeyE') || touchAscend) v += 1;
-      if (keys.has('KeyQ') || keys.has('ShiftLeft') || keys.has('ShiftRight') || touchDescend) {
-        v -= 1;
-      }
+      if (keys.has('KeyQ') || keys.has('ShiftRight') || touchDescend) v -= 1;
       return Math.max(-1, Math.min(1, v));
     },
 
-    consumeFlyToggle() {
-      const pressed = keys.has('KeyF') || touchFlyToggle;
-      touchFlyToggle = false;
+    /** Space / JUMP pad — hop, double-jump to fly, or roll while flying (handled by caller). */
+    consumeJump() {
+      const pressed = keys.has('Space') || touchJump;
+      touchJump = false;
       if (pressed) {
-        if (!flyToggleHeld) {
-          flyToggleHeld = true;
+        if (!jumpHeld) {
+          jumpHeld = true;
           return true;
         }
         return false;
       }
-      flyToggleHeld = keys.has('KeyF');
+      jumpHeld = keys.has('Space');
       return false;
     },
 
-    requestTouchBarrelRoll() {
-      touchBarrelRoll = true;
+    consumeLand() {
+      const pressed = touchLand || keys.has('KeyF');
+      touchLand = false;
+      if (pressed) {
+        if (!landHeld) {
+          landHeld = true;
+          return true;
+        }
+        return false;
+      }
+      landHeld = keys.has('KeyF');
+      return false;
     },
 
     consumeBarrelRoll() {
-      const pressed = keys.has('Space') || touchBarrelRoll;
+      const pressed = touchBarrelRoll;
       touchBarrelRoll = false;
       if (pressed) {
         if (!barrelHeld) {
@@ -136,26 +160,13 @@ export function createControls() {
         }
         return false;
       }
-      barrelHeld = keys.has('Space');
+      barrelHeld = false;
       return false;
     },
 
+    /** H or Left Shift (Space is jump). */
     consumeHonk() {
-      const pressed = keys.has('KeyH') || touchHonkDown || keys.has('Space');
-      if (pressed) {
-        if (!honkHeld) {
-          honkHeld = true;
-          return true;
-        }
-        return false;
-      }
-      honkHeld = false;
-      return false;
-    },
-
-    /** Honk while flying ignores Space (barrel roll). */
-    consumeHonkFlying() {
-      const pressed = keys.has('KeyH') || touchHonkDown;
+      const pressed = keys.has('KeyH') || keys.has('ShiftLeft') || touchHonkDown;
       if (pressed) {
         if (!honkHeld) {
           honkHeld = true;

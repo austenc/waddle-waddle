@@ -1,5 +1,5 @@
 /**
- * On-screen joystick + HONK + FLY / UP / DOWN for phones.
+ * On-screen joystick + JUMP / LAND / UP / DN / ROLL + HONK for phones.
  */
 export function createTouchControls(controls) {
   const root = document.createElement('div');
@@ -13,11 +13,12 @@ export function createTouchControls(controls) {
     <div class="touch-actions">
       <div class="fly-stack is-grounded" id="fly-stack">
         <button type="button" class="alt-pad" id="ascend-pad" aria-label="Fly up">UP</button>
-        <button type="button" class="fly-pad" id="fly-pad" aria-label="Toggle fly">
-          <span class="fly-pad-label">FLY</span>
+        <button type="button" class="fly-pad" id="jump-pad" aria-label="Jump">
+          <span class="fly-pad-label">JUMP</span>
         </button>
         <button type="button" class="alt-pad" id="descend-pad" aria-label="Fly down">DN</button>
         <button type="button" class="roll-pad" id="roll-pad" aria-label="Barrel roll">ROLL</button>
+        <button type="button" class="land-pad" id="land-pad" aria-label="Land">LAND</button>
       </div>
       <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
         <span class="honk-pad-label">HONK</span>
@@ -29,7 +30,8 @@ export function createTouchControls(controls) {
   const joy = root.querySelector('#joy');
   const knob = root.querySelector('#joy-knob');
   const honkPad = root.querySelector('#honk-pad');
-  const flyPad = root.querySelector('#fly-pad');
+  const jumpPad = root.querySelector('#jump-pad');
+  const landPad = root.querySelector('#land-pad');
   const ascendPad = root.querySelector('#ascend-pad');
   const descendPad = root.querySelector('#descend-pad');
   const rollPad = root.querySelector('#roll-pad');
@@ -64,8 +66,7 @@ export function createTouchControls(controls) {
   function setFlying(flying) {
     flyStack.classList.toggle('is-flying', flying);
     flyStack.classList.toggle('is-grounded', !flying);
-    flyPad.classList.toggle('is-on', flying);
-    flyPad.querySelector('.fly-pad-label').textContent = flying ? 'LAND' : 'FLY';
+    jumpPad.querySelector('.fly-pad-label').textContent = flying ? 'ROLL' : 'JUMP';
     if (!flying) {
       controls.setTouchAscend(false);
       controls.setTouchDescend(false);
@@ -133,15 +134,30 @@ export function createTouchControls(controls) {
   honkPad.addEventListener('pointercancel', stopHonk);
   honkPad.addEventListener('pointerleave', stopHonk);
 
-  flyPad.addEventListener('pointerdown', (e) => {
+  // JUMP on ground / hop; while flying this pad also requests a roll (label becomes ROLL)
+  jumpPad.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    flyPad.setPointerCapture(e.pointerId);
-    flyPad.classList.add('is-held');
-    controls.requestTouchFlyToggle();
+    jumpPad.setPointerCapture(e.pointerId);
+    jumpPad.classList.add('is-held');
+    if (flyStack.classList.contains('is-flying')) {
+      controls.requestTouchBarrelRoll();
+    } else {
+      controls.requestTouchJump();
+    }
   });
-  const stopFlyPad = () => flyPad.classList.remove('is-held');
-  flyPad.addEventListener('pointerup', stopFlyPad);
-  flyPad.addEventListener('pointercancel', stopFlyPad);
+  const stopJump = () => jumpPad.classList.remove('is-held');
+  jumpPad.addEventListener('pointerup', stopJump);
+  jumpPad.addEventListener('pointercancel', stopJump);
+
+  landPad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    landPad.setPointerCapture(e.pointerId);
+    landPad.classList.add('is-held');
+    controls.requestTouchLand();
+  });
+  const stopLand = () => landPad.classList.remove('is-held');
+  landPad.addEventListener('pointerup', stopLand);
+  landPad.addEventListener('pointercancel', stopLand);
 
   function bindHoldPad(el, setDown) {
     el.addEventListener('pointerdown', (e) => {

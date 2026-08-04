@@ -129,7 +129,7 @@ export function createDuck() {
     },
 
     getFollowY() {
-      return state.flying ? state.altitude : state.baseY;
+      return state.altitude;
     },
 
     setFacing(angle) {
@@ -144,10 +144,11 @@ export function createDuck() {
     },
 
     /**
-     * Ground: cartoony waddle. Air: flapping wings + optional barrel roll.
+     * Ground waddle, hop tuck, or flight flaps / barrel roll.
      * @param {number} vertical - climb input while flying (-1..1)
+     * @param {boolean} hopping - mid hop (not free-flying)
      */
-    update(dt, moving, flying = false, vertical = 0) {
+    update(dt, moving, flying = false, vertical = 0, hopping = false) {
       state.moving = moving;
       state.flying = flying;
       let yOffset = 0;
@@ -168,7 +169,6 @@ export function createDuck() {
             state.rollT = 0;
             root.rotation.z = 0;
           } else {
-            // Full 360 spin; ease slightly at the ends
             const t = state.rollT;
             const eased = t * t * (3 - 2 * t);
             root.rotation.z = eased * Math.PI * 2 * state.rollDir;
@@ -196,6 +196,20 @@ export function createDuck() {
         yOffset = flapAbs * 0.04;
         head.position.x *= 0.9;
         neck.position.x *= 0.9;
+        head.position.y = 1.2;
+        neck.position.y = 0.95;
+      } else if (hopping) {
+        state.flapPhase += dt * 14;
+        const flap = Math.sin(state.flapPhase);
+        root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, -0.2, 1 - Math.exp(-8 * dt));
+        root.rotation.z *= 0.9;
+        leftWing.rotation.z = 0.35 + flap * 0.4;
+        rightWing.rotation.z = -0.35 - flap * 0.4;
+        leftFoot.rotation.x = 0.7;
+        rightFoot.rotation.x = 0.7;
+        leftFoot.position.y = 0.16;
+        rightFoot.position.y = 0.16;
+        root.scale.set(1, 1, 1);
         head.position.y = 1.2;
         neck.position.y = 0.95;
       } else if (moving) {
@@ -256,7 +270,7 @@ export function createDuck() {
         beak.scale.set(1, 1, 1);
       }
 
-      root.position.y = (flying ? state.altitude : state.baseY) + yOffset;
+      root.position.y = state.altitude + yOffset;
     },
 
     triggerHonk() {
