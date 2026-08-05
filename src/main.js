@@ -11,9 +11,10 @@ if (versionEl) {
 }
 
 const SPEED = 5.2;
+const FLY_SPEED = 14;
 const GLIDE_SPEED = 17;
+const BRAKE_SPEED = 5;
 const BANK_SPEED = 9;
-const PITCH_SPEED = 10;
 const RUDDER_SPEED = 2.4;
 const ROLL_SHIFT_SPEED = 22;
 const MAX_ALTITUDE = 28;
@@ -168,7 +169,7 @@ function tick() {
 
   let moving = false;
   let bank = 0;
-  let pitch = 0;
+  let throttle = 0;
   let gliding = false;
 
   if (playing) {
@@ -190,13 +191,11 @@ function tick() {
       controls.syncJumpLatch();
       const axes = controls.getFlightAxes();
       bank = axes.bank;
-      pitch = axes.pitch;
+      throttle = axes.throttle;
       gliding = controls.isGliding();
 
-      // Light coordinated turn from bank + explicit Q/E rudder
-      // Negate bank for third-person (camera behind): A = screen-left
-      const bankSense = -bank;
-      const yawRate = axes.rudder * RUDDER_SPEED + bankSense * 0.55;
+      // Coordinated turn from bank + Q/E rudder (same bank sign as strafe / tilt)
+      const yawRate = axes.rudder * RUDDER_SPEED + bank * 0.55;
       duckYaw += yawRate * dt;
       duck.setFacing(duckYaw);
 
@@ -205,18 +204,22 @@ function tick() {
       const rx = Math.cos(duckYaw);
       const rz = -Math.sin(duckYaw);
 
-      // No auto-throttle — forward only while gliding (Space). Bank strafe always.
-      let vx = rx * bankSense * BANK_SPEED;
-      let vz = rz * bankSense * BANK_SPEED;
-      if (gliding) {
-        vx += fx * GLIDE_SPEED;
-        vz += fz * GLIDE_SPEED;
+      // W = forward, S = mild reverse; glide boosts forward thrust only
+      let forwardSpeed = 0;
+      if (throttle > 0) {
+        forwardSpeed = throttle * (gliding ? GLIDE_SPEED : FLY_SPEED);
+      } else if (throttle < 0) {
+        forwardSpeed = throttle * BRAKE_SPEED;
       }
 
-      // Star Fox roll: spin + lateral shove (same screen-left sense as bank)
+      // Bank strafe + throttle along facing (one shared bank sign)
+      let vx = fx * forwardSpeed + rx * bank * BANK_SPEED;
+      let vz = fz * forwardSpeed + rz * bank * BANK_SPEED;
+
+      // Barrel roll: spin + shove share the same direction as bank (D = right)
       const rollDir = controls.consumeBarrelRoll();
       if (rollDir !== 0) {
-        duck.triggerBarrelRoll(-rollDir);
+        duck.triggerBarrelRoll(rollDir);
       }
       if (duck.isBarrelRolling()) {
         const dir = duck.getRollDir();
@@ -229,18 +232,15 @@ function tick() {
       duck.root.position.x = THREE.MathUtils.clamp(nx, -BOUNDS, BOUNDS);
       duck.root.position.z = THREE.MathUtils.clamp(nz, -BOUNDS, BOUNDS);
 
-      // W/S pitch; glide softens climb/dive for a floaty hold
-      let climb = pitch * PITCH_SPEED;
-      if (gliding) climb *= 0.28;
-      let alt = duck.getAltitude() + climb * dt;
-      alt = Math.min(alt, MAX_ALTITUDE);
+      // Hold altitude; F / LAND to touch down
+      let alt = duck.getAltitude();
       if (alt <= LAND_ALTITUDE) {
         setFlying(false);
       } else {
         duck.setAltitude(alt);
       }
 
-      moving = gliding || Math.abs(bank) > 0.05 || Math.abs(pitch) > 0.05;
+      moving = Math.abs(throttle) > 0.05 || Math.abs(bank) > 0.05 || gliding;
     } else {
       const input = controls.getMoveVector();
 
@@ -297,7 +297,7 @@ function tick() {
       }
     }
 
-    duck.update(dt, moving, flying, pitch, airborne && !flying, bank, gliding);
+    duck.update(dt, moving, flying, throttle, airborne && !flying, bank, gliding);
 
     if (controls.consumeHonk()) {
       duck.triggerHonk();

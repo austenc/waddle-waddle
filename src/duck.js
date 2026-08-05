@@ -149,18 +149,18 @@ export function createDuck() {
 
     /**
      * Ground waddle, hop tuck, or glide / bank / barrel roll.
-     * @param {number} pitch - climb input while flying (-1..1)
+     * @param {number} throttle - forward thrust while flying (-1..1)
      * @param {boolean} hopping
-     * @param {number} bank - A/D bank (-1..1)
+     * @param {number} bank - A/D bank (-1..1); same sign as strafe / roll
      * @param {boolean} gliding - Space hold
      */
-    update(dt, moving, flying = false, pitch = 0, hopping = false, bank = 0, gliding = false) {
+    update(dt, moving, flying = false, throttle = 0, hopping = false, bank = 0, gliding = false) {
       state.moving = moving;
       state.flying = flying;
       let yOffset = 0;
 
       if (flying) {
-        const flapRate = gliding ? 6 : 16 + Math.abs(pitch) * 8;
+        const flapRate = gliding ? 6 : 14 + Math.max(0, throttle) * 10;
         state.flapPhase += dt * flapRate;
         const flap = Math.sin(state.flapPhase);
         const flapAbs = Math.abs(flap);
@@ -186,13 +186,14 @@ export function createDuck() {
           } else {
             const t = state.rollT;
             const eased = t * t * (3 - 2 * t);
-            root.rotation.z = eased * Math.PI * 2 * state.rollDir;
+            // rollDir +1 = shove right; spin so right wing dips first (Three.js −z)
+            root.rotation.z = -eased * Math.PI * 2 * state.rollDir;
           }
           root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
-          // Match third-person bank sense (A = tilt / strafe screen-left)
+          // +bank (D) strafes right; −rotation.z dips the right wing to match
           const targetBank = -bank * 0.55;
-          const targetPitch = pitch * -0.45;
+          const targetPitch = Math.max(0, throttle) * -0.12;
           root.rotation.z = THREE.MathUtils.lerp(root.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
           root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
         }

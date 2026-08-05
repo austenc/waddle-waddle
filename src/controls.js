@@ -9,7 +9,7 @@ export function createControls() {
   let touchLand = false;
   let touchGlide = false;
   let touchBank = 0;
-  let touchPitch = 0;
+  let touchThrottle = 0;
   let touchRudder = 0;
   let touchFlightActive = false;
   let honkHeld = false;
@@ -75,7 +75,7 @@ export function createControls() {
         touchZ = 0;
         touchActive = false;
         touchBank = 0;
-        touchPitch = 0;
+        touchThrottle = 0;
         touchFlightActive = false;
         return;
       }
@@ -83,9 +83,9 @@ export function createControls() {
       touchX = x * inv;
       touchZ = z * inv;
       touchActive = true;
-      // While flying the stick is bank (x) + pitch (y): up on stick = climb
+      // Flying: stick X = bank, stick up = throttle forward
       touchBank = touchX;
-      touchPitch = -touchZ;
+      touchThrottle = -touchZ;
       touchFlightActive = true;
     },
 
@@ -94,7 +94,7 @@ export function createControls() {
       touchZ = 0;
       touchActive = false;
       touchBank = 0;
-      touchPitch = 0;
+      touchThrottle = 0;
       touchFlightActive = false;
     },
 
@@ -145,32 +145,32 @@ export function createControls() {
     },
 
     /**
-     * Flight inputs: constant forward is handled in main.
-     * bank -1..1 (A/D), pitch -1..1 (W up / S down), rudder -1..1 (Q/E).
+     * Flight inputs.
+     * bank -1..1 (A/D), throttle -1..1 (W forward / S brake), rudder -1..1 (Q/E).
      */
     getFlightAxes() {
       let bank = 0;
-      let pitch = 0;
+      let throttle = 0;
       let rudder = 0;
 
       if (keys.has('KeyA') || keys.has('ArrowLeft')) bank -= 1;
       if (keys.has('KeyD') || keys.has('ArrowRight')) bank += 1;
-      if (keys.has('KeyW') || keys.has('ArrowUp')) pitch += 1;
-      if (keys.has('KeyS') || keys.has('ArrowDown')) pitch -= 1;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) throttle += 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) throttle -= 1;
       if (keys.has('KeyQ')) rudder -= 1;
       if (keys.has('KeyE')) rudder += 1;
 
       if (touchFlightActive) {
         bank = touchBank;
-        pitch = touchPitch;
+        throttle = touchThrottle;
       }
       rudder += touchRudder;
 
       bank = Math.max(-1, Math.min(1, bank));
-      pitch = Math.max(-1, Math.min(1, pitch));
+      throttle = Math.max(-1, Math.min(1, throttle));
       rudder = Math.max(-1, Math.min(1, rudder));
 
-      return { bank, pitch, rudder };
+      return { bank, throttle, rudder };
     },
 
     isGliding() {
