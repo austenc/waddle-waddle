@@ -150,6 +150,16 @@ canvas {
   margin-top: 0.9rem;
 }
 
+.splash-version {
+  font-family: "Nunito", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  opacity: 0.42;
+  margin-top: 1.1rem;
+  user-select: text;
+}
+
 /* —— In-game HUD —— */
 #hud {
   position: fixed;

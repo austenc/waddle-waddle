@@ -5,6 +5,11 @@ import { createControls } from './controls.js';
 import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
 
+const versionEl = document.getElementById('splash-version');
+if (versionEl) {
+  versionEl.textContent = `v${__APP_VERSION__}`;
+}
+
 const SPEED = 5.2;
 const GLIDE_SPEED = 17;
 const BANK_SPEED = 9;
