@@ -18,6 +18,7 @@ const BRAKE_DECEL = 36;
 const IDLE_DECEL = 10;
 const GLIDE_DECEL = 4;
 const BANK_SPEED = 7;
+const GLIDE_STRAFE = 11;
 const BANK_TURN = 1.8;
 const RUDDER_SPEED = 2.2;
 const ROLL_SHIFT_SPEED = 22;
@@ -223,7 +224,8 @@ function tick() {
       }
       airSpeed = THREE.MathUtils.clamp(airSpeed, 0, FLY_MAX_SPEED);
 
-      const yawRate = axes.rudder * RUDDER_SPEED + bank * BANK_TURN;
+      // Thrusting: bank adds a little coordinated turn. Gliding: tilt + strafe only (no yaw).
+      const yawRate = axes.rudder * RUDDER_SPEED + (gliding ? 0 : bank * BANK_TURN);
       duckYaw += yawRate * dt;
       duck.setFacing(duckYaw);
 
@@ -232,8 +234,9 @@ function tick() {
       const rx = Math.cos(duckYaw);
       const rz = -Math.sin(duckYaw);
 
-      let vx = fx * airSpeed + rx * bank * BANK_SPEED;
-      let vz = fz * airSpeed + rz * bank * BANK_SPEED;
+      const strafe = bank * (gliding ? GLIDE_STRAFE : BANK_SPEED);
+      let vx = fx * airSpeed + rx * strafe;
+      let vz = fz * airSpeed + rz * strafe;
 
       const rollDir = controls.consumeBarrelRoll();
       if (rollDir !== 0) {
