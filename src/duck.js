@@ -208,7 +208,8 @@ export function createDuck() {
           tilt.rotation.x = THREE.MathUtils.lerp(tilt.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
           // D (+bank) → right strafe → right wing down (−z)
-          const targetBank = -bank * 0.5;
+          // Glide: soft lean only; thrusting: fuller bank
+          const targetBank = -bank * (gliding ? 0.28 : 0.5);
           // Nose up when climbing, down when sinking
           const targetPitch = THREE.MathUtils.clamp(-climbRate * 0.045, -0.35, 0.35);
           tilt.rotation.z = THREE.MathUtils.lerp(tilt.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
