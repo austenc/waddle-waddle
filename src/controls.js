@@ -6,15 +6,12 @@ export function createControls() {
   let touchActive = false;
   let touchHonkDown = false;
   let touchJump = false;
-  let touchLand = false;
   let touchGlide = false;
   let touchBank = 0;
   let touchThrottle = 0;
-  let touchRudder = 0;
   let touchFlightActive = false;
   let honkHeld = false;
   let jumpHeld = false;
-  let landHeld = false;
 
   /** Double-tap A/D → barrel roll */
   const DOUBLE_TAP_MS = 260;
@@ -47,9 +44,6 @@ export function createControls() {
         'KeyA',
         'KeyS',
         'KeyD',
-        'KeyE',
-        'KeyQ',
-        'KeyF',
         'ShiftLeft',
         'ShiftRight',
       ].includes(e.code)
@@ -110,16 +104,8 @@ export function createControls() {
       touchJump = true;
     },
 
-    requestTouchLand() {
-      touchLand = true;
-    },
-
     setTouchGlide(down) {
       touchGlide = down;
-    },
-
-    setTouchRudder(v) {
-      touchRudder = Math.max(-1, Math.min(1, v));
     },
 
     requestTouchBarrelRoll(dir = 1) {
@@ -149,31 +135,26 @@ export function createControls() {
     },
 
     /**
-     * Flight: bank (A/D), throttle (W/S), rudder (Q/E).
+     * Flight: bank (A/D), throttle (W/S).
      * W = +throttle (thrust forward). S = −throttle (brake).
      */
     getFlightAxes() {
       let bank = 0;
       let throttle = 0;
-      let rudder = 0;
 
       if (keys.has('KeyA') || keys.has('ArrowLeft')) bank -= 1;
       if (keys.has('KeyD') || keys.has('ArrowRight')) bank += 1;
       if (keys.has('KeyW') || keys.has('ArrowUp')) throttle += 1;
       if (keys.has('KeyS') || keys.has('ArrowDown')) throttle -= 1;
-      if (keys.has('KeyQ')) rudder -= 1;
-      if (keys.has('KeyE')) rudder += 1;
 
       if (touchFlightActive) {
         bank = touchBank;
         throttle = touchThrottle;
       }
-      rudder += touchRudder;
 
       return {
         bank: Math.max(-1, Math.min(1, bank)),
         throttle: Math.max(-1, Math.min(1, throttle)),
-        rudder: Math.max(-1, Math.min(1, rudder)),
       };
     },
 
@@ -196,20 +177,6 @@ export function createControls() {
         return false;
       }
       jumpHeld = keys.has('Space');
-      return false;
-    },
-
-    consumeLand() {
-      const pressed = touchLand || keys.has('KeyF');
-      touchLand = false;
-      if (pressed) {
-        if (!landHeld) {
-          landHeld = true;
-          return true;
-        }
-        return false;
-      }
-      landHeld = keys.has('KeyF');
       return false;
     },
 

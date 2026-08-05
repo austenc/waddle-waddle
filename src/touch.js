@@ -19,7 +19,6 @@ export function createTouchControls(controls) {
           <button type="button" class="roll-pad" id="roll-left" aria-label="Barrel roll left">◀</button>
           <button type="button" class="roll-pad" id="roll-right" aria-label="Barrel roll right">▶</button>
         </div>
-        <button type="button" class="land-pad" id="land-pad" aria-label="Land">LAND</button>
       </div>
       <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
         <span class="honk-pad-label">HONK</span>
@@ -32,7 +31,6 @@ export function createTouchControls(controls) {
   const knob = root.querySelector('#joy-knob');
   const honkPad = root.querySelector('#honk-pad');
   const jumpPad = root.querySelector('#jump-pad');
-  const landPad = root.querySelector('#land-pad');
   const rollLeft = root.querySelector('#roll-left');
   const rollRight = root.querySelector('#roll-right');
   const flyStack = root.querySelector('#fly-stack');
@@ -145,16 +143,6 @@ export function createTouchControls(controls) {
   };
   jumpPad.addEventListener('pointerup', stopJump);
   jumpPad.addEventListener('pointercancel', stopJump);
-
-  landPad.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    landPad.setPointerCapture(e.pointerId);
-    landPad.classList.add('is-held');
-    controls.requestTouchLand();
-  });
-  const stopLand = () => landPad.classList.remove('is-held');
-  landPad.addEventListener('pointerup', stopLand);
-  landPad.addEventListener('pointercancel', stopLand);
 
   function bindRoll(el, dir) {
     el.addEventListener('pointerdown', (e) => {

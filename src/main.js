@@ -20,7 +20,6 @@ const GLIDE_DECEL = 4;
 const BANK_SPEED = 7;
 const GLIDE_STRAFE = 11;
 const BANK_TURN = 1.8;
-const RUDDER_SPEED = 2.2;
 const ROLL_SHIFT_SPEED = 22;
 const FLAP_CLIMB = 7;
 const GLIDE_SINK = 3.2;
@@ -195,10 +194,6 @@ function tick() {
       }
     }
 
-    if (flying && controls.consumeLand()) {
-      setFlying(false);
-    }
-
     if (flying) {
       controls.syncJumpLatch();
       const axes = controls.getFlightAxes();
@@ -209,7 +204,7 @@ function tick() {
 
       // --- Simple duck flight sim ---
       // W thrusts along facing; S brakes; Space glides (coast + sink)
-      // A/D bank (turn + tilt + light strafe); Q/E rudder; A/D×2 barrel roll
+      // A/D bank (turn while thrusting, strafe while gliding); A/D×2 barrel roll
       if (throttle > 0 && !gliding) {
         airSpeed += THRUST_ACCEL * throttle * dt;
       } else if (throttle < 0) {
@@ -225,7 +220,7 @@ function tick() {
       airSpeed = THREE.MathUtils.clamp(airSpeed, 0, FLY_MAX_SPEED);
 
       // Thrusting: bank adds a little coordinated turn. Gliding: tilt + strafe only (no yaw).
-      const yawRate = axes.rudder * RUDDER_SPEED + (gliding ? 0 : bank * BANK_TURN);
+      const yawRate = gliding ? 0 : bank * BANK_TURN;
       duckYaw += yawRate * dt;
       duck.setFacing(duckYaw);
 
