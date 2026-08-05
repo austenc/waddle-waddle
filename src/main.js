@@ -201,7 +201,8 @@ function tick() {
     if (flying) {
       controls.syncJumpLatch();
       const axes = controls.getFlightAxes();
-      bank = axes.bank;
+      // Screen-left/right from behind the duck (raw A/D felt mirrored)
+      bank = -axes.bank;
       throttle = axes.throttle;
       gliding = controls.isGliding();
 
@@ -236,7 +237,7 @@ function tick() {
 
       const rollDir = controls.consumeBarrelRoll();
       if (rollDir !== 0) {
-        duck.triggerBarrelRoll(rollDir);
+        duck.triggerBarrelRoll(-rollDir);
       }
       if (duck.isBarrelRolling()) {
         const dir = duck.getRollDir();
