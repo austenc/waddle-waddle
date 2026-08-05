@@ -5,18 +5,25 @@ import { createControls } from './controls.js';
 import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
 
-const versionEl = document.getElementById('splash-version');
+const versionEl = document.getElementById('build-version');
 if (versionEl) {
   versionEl.textContent = `v${__APP_VERSION__}`;
 }
 
 const SPEED = 5.2;
-const FLY_SPEED = 14;
-const GLIDE_SPEED = 17;
-const BRAKE_SPEED = 5;
-const BANK_SPEED = 9;
-const RUDDER_SPEED = 2.4;
+const FLY_MAX_SPEED = 16;
+const GLIDE_COAST = 11;
+const THRUST_ACCEL = 28;
+const BRAKE_DECEL = 36;
+const IDLE_DECEL = 10;
+const GLIDE_DECEL = 4;
+const BANK_SPEED = 7;
+const BANK_TURN = 1.8;
+const RUDDER_SPEED = 2.2;
 const ROLL_SHIFT_SPEED = 22;
+const FLAP_CLIMB = 7;
+const GLIDE_SINK = 3.2;
+const IDLE_SINK = 5.5;
 const MAX_ALTITUDE = 28;
 const LAND_ALTITUDE = 0.85;
 const JUMP_VELOCITY = 8.5;
@@ -56,6 +63,7 @@ let playing = false;
 let flying = false;
 let hopVy = 0;
 let airborne = false;
+let airSpeed = 0;
 
 const CAM_DIST = 9;
 const CAM_HEIGHT = 5.5;
@@ -96,11 +104,13 @@ function setFlying(next) {
   if (flying) {
     airborne = true;
     hopVy = 0;
-    const takeoff = Math.max(duck.getAltitude(), LAND_ALTITUDE + 0.4);
+    airSpeed = Math.max(airSpeed, 6);
+    const takeoff = Math.max(duck.getAltitude(), LAND_ALTITUDE + 1.2);
     duck.setAltitude(takeoff);
   } else {
     hopVy = 0;
     airborne = false;
+    airSpeed = 0;
     const gy = groundY(duck.root.position.x, duck.root.position.z);
     duck.setAltitude(gy);
     duck.setPosition(
@@ -171,9 +181,10 @@ function tick() {
   let bank = 0;
   let throttle = 0;
   let gliding = false;
+  let climbRate = 0;
 
   if (playing) {
-    // Hop / double-jump takeoff (Space is glide once airborne-flying)
+    // Hop / double-jump takeoff (Space becomes glide once flying)
     if (!flying && controls.consumeJump()) {
       if (airborne) {
         setFlying(true);
@@ -194,8 +205,24 @@ function tick() {
       throttle = axes.throttle;
       gliding = controls.isGliding();
 
-      // Coordinated turn from bank + Q/E rudder (same bank sign as strafe / tilt)
-      const yawRate = axes.rudder * RUDDER_SPEED + bank * 0.55;
+      // --- Simple duck flight sim ---
+      // W thrusts along facing; S brakes; Space glides (coast + sink)
+      // A/D bank (turn + tilt + light strafe); Q/E rudder; A/D×2 barrel roll
+      if (throttle > 0 && !gliding) {
+        airSpeed += THRUST_ACCEL * throttle * dt;
+      } else if (throttle < 0) {
+        airSpeed += BRAKE_DECEL * throttle * dt; // throttle negative → slow down
+      } else if (gliding) {
+        // Ease toward a gentle coast speed
+        const delta = GLIDE_COAST - airSpeed;
+        const step = Math.sign(delta) * Math.min(Math.abs(delta), GLIDE_DECEL * dt);
+        airSpeed += step;
+      } else {
+        airSpeed -= IDLE_DECEL * dt;
+      }
+      airSpeed = THREE.MathUtils.clamp(airSpeed, 0, FLY_MAX_SPEED);
+
+      const yawRate = axes.rudder * RUDDER_SPEED + bank * BANK_TURN;
       duckYaw += yawRate * dt;
       duck.setFacing(duckYaw);
 
@@ -204,19 +231,9 @@ function tick() {
       const rx = Math.cos(duckYaw);
       const rz = -Math.sin(duckYaw);
 
-      // W = forward, S = mild reverse; glide boosts forward thrust only
-      let forwardSpeed = 0;
-      if (throttle > 0) {
-        forwardSpeed = throttle * (gliding ? GLIDE_SPEED : FLY_SPEED);
-      } else if (throttle < 0) {
-        forwardSpeed = throttle * BRAKE_SPEED;
-      }
+      let vx = fx * airSpeed + rx * bank * BANK_SPEED;
+      let vz = fz * airSpeed + rz * bank * BANK_SPEED;
 
-      // Bank strafe + throttle along facing (one shared bank sign)
-      let vx = fx * forwardSpeed + rx * bank * BANK_SPEED;
-      let vz = fz * forwardSpeed + rz * bank * BANK_SPEED;
-
-      // Barrel roll: spin + shove share the same direction as bank (D = right)
       const rollDir = controls.consumeBarrelRoll();
       if (rollDir !== 0) {
         duck.triggerBarrelRoll(rollDir);
@@ -232,15 +249,24 @@ function tick() {
       duck.root.position.x = THREE.MathUtils.clamp(nx, -BOUNDS, BOUNDS);
       duck.root.position.z = THREE.MathUtils.clamp(nz, -BOUNDS, BOUNDS);
 
-      // Hold altitude; F / LAND to touch down
-      let alt = duck.getAltitude();
+      // Lift from flapping; glide/idle sink
+      if (throttle > 0 && !gliding) {
+        climbRate = FLAP_CLIMB * throttle * (0.55 + 0.45 * (airSpeed / FLY_MAX_SPEED));
+      } else if (gliding) {
+        climbRate = -GLIDE_SINK;
+      } else {
+        climbRate = -IDLE_SINK;
+      }
+
+      let alt = duck.getAltitude() + climbRate * dt;
+      alt = Math.min(alt, MAX_ALTITUDE);
       if (alt <= LAND_ALTITUDE) {
         setFlying(false);
       } else {
         duck.setAltitude(alt);
       }
 
-      moving = Math.abs(throttle) > 0.05 || Math.abs(bank) > 0.05 || gliding;
+      moving = airSpeed > 0.4 || Math.abs(bank) > 0.05 || Math.abs(throttle) > 0.05;
     } else {
       const input = controls.getMoveVector();
 
@@ -297,7 +323,7 @@ function tick() {
       }
     }
 
-    duck.update(dt, moving, flying, throttle, airborne && !flying, bank, gliding);
+    duck.update(dt, moving, flying, throttle, airborne && !flying, bank, gliding, climbRate);
 
     if (controls.consumeHonk()) {
       duck.triggerHonk();
@@ -312,7 +338,7 @@ function tick() {
       duck.root.position.z,
       world.isInWater(duck.root.position.x, duck.root.position.z),
     );
-    duck.update(dt, false, false, 0, false, 0, false);
+    duck.update(dt, false, false, 0, false, 0, false, 0);
   }
 
   updateCamera(dt);

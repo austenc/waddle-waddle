@@ -150,13 +150,18 @@ canvas {
   margin-top: 0.9rem;
 }
 
-.splash-version {
+#build-version {
+  position: fixed;
+  left: max(0.75rem, env(safe-area-inset-left));
+  bottom: max(0.65rem, env(safe-area-inset-bottom));
+  z-index: 40;
+  pointer-events: none;
   font-family: "Nunito", sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  opacity: 0.42;
-  margin-top: 1.1rem;
+  letter-spacing: 0.05em;
+  color: rgba(243, 239, 228, 0.72);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   user-select: text;
 }
 

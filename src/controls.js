@@ -1,4 +1,4 @@
-/** Keyboard + on-screen touch controls for waddle, jump/fly, and honk. */
+/** Keyboard + on-screen touch controls for waddle, flight, and honk. */
 export function createControls() {
   const keys = new Set();
   let touchX = 0;
@@ -16,14 +16,13 @@ export function createControls() {
   let jumpHeld = false;
   let landHeld = false;
 
-  /** Double-tap A/D → Star Fox barrel roll */
+  /** Double-tap A/D → barrel roll */
   const DOUBLE_TAP_MS = 260;
   let lastTapA = 0;
   let lastTapD = 0;
   let pendingRoll = 0; // -1 left, +1 right
 
   const onDown = (e) => {
-    // Ignore OS key-repeat so holding A/D to bank doesn't spam rolls
     if (!e.repeat) {
       const now = performance.now();
       if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
@@ -44,8 +43,13 @@ export function createControls() {
         'ArrowLeft',
         'ArrowRight',
         'Space',
+        'KeyW',
+        'KeyA',
+        'KeyS',
+        'KeyD',
         'KeyE',
         'KeyQ',
+        'KeyF',
         'ShiftLeft',
         'ShiftRight',
       ].includes(e.code)
@@ -83,7 +87,7 @@ export function createControls() {
       touchX = x * inv;
       touchZ = z * inv;
       touchActive = true;
-      // Flying: stick X = bank, stick up = throttle forward
+      // Flight stick: X = bank, up = throttle
       touchBank = touchX;
       touchThrottle = -touchZ;
       touchFlightActive = true;
@@ -122,7 +126,7 @@ export function createControls() {
       pendingRoll = dir >= 0 ? 1 : -1;
     },
 
-    /** Ground / hop movement (camera-relative WASD). */
+    /** Ground / hop: camera-relative WASD. */
     getMoveVector() {
       let x = 0;
       let z = 0;
@@ -145,8 +149,8 @@ export function createControls() {
     },
 
     /**
-     * Flight inputs.
-     * bank -1..1 (A/D), throttle -1..1 (W forward / S brake), rudder -1..1 (Q/E).
+     * Flight: bank (A/D), throttle (W/S), rudder (Q/E).
+     * W = +throttle (thrust forward). S = −throttle (brake).
      */
     getFlightAxes() {
       let bank = 0;
@@ -166,23 +170,21 @@ export function createControls() {
       }
       rudder += touchRudder;
 
-      bank = Math.max(-1, Math.min(1, bank));
-      throttle = Math.max(-1, Math.min(1, throttle));
-      rudder = Math.max(-1, Math.min(1, rudder));
-
-      return { bank, throttle, rudder };
+      return {
+        bank: Math.max(-1, Math.min(1, bank)),
+        throttle: Math.max(-1, Math.min(1, throttle)),
+        rudder: Math.max(-1, Math.min(1, rudder)),
+      };
     },
 
     isGliding() {
       return keys.has('Space') || touchGlide;
     },
 
-    /** Call each frame while flying so Space-as-glide doesn't eat the next hop. */
     syncJumpLatch() {
       jumpHeld = keys.has('Space') || touchGlide;
     },
 
-    /** Space / JUMP — hop & double-jump only (not used as edge while gliding in air). */
     consumeJump() {
       const pressed = keys.has('Space') || touchJump;
       touchJump = false;
@@ -211,14 +213,12 @@ export function createControls() {
       return false;
     },
 
-    /** -1 left roll, +1 right roll, 0 none. Double-tap A/D or touch roll pads. */
     consumeBarrelRoll() {
       const dir = pendingRoll;
       pendingRoll = 0;
       return dir;
     },
 
-    /** H or Left Shift. */
     consumeHonk() {
       const pressed = keys.has('KeyH') || keys.has('ShiftLeft') || touchHonkDown;
       if (pressed) {

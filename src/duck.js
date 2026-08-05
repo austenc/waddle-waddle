@@ -24,50 +24,56 @@ function part(w, h, d, color, x, y, z) {
   return mesh;
 }
 
-/** Voxel mallard — root at ground level, facing +Z. */
+/**
+ * Voxel mallard.
+ * root = position + yaw only
+ * pose = pitch / bank / waddle tilt (avoids Euler coupling that made W look like a roll)
+ */
 export function createDuck() {
   const root = new THREE.Group();
+  const pose = new THREE.Group();
+  root.add(pose);
 
   // Body
-  root.add(part(0.9, 0.55, 1.15, C.body, 0, 0.55, 0));
-  root.add(part(0.7, 0.35, 0.55, C.chest, 0, 0.45, 0.35));
+  pose.add(part(0.9, 0.55, 1.15, C.body, 0, 0.55, 0));
+  pose.add(part(0.7, 0.35, 0.55, C.chest, 0, 0.45, 0.35));
 
   // Head + neck
   const neck = part(0.35, 0.35, 0.35, C.head, 0, 0.95, 0.55);
   const head = part(0.55, 0.45, 0.5, C.head, 0, 1.2, 0.62);
-  root.add(neck);
-  root.add(head);
-  root.add(part(0.58, 0.08, 0.52, C.collar, 0, 0.95, 0.55));
+  pose.add(neck);
+  pose.add(head);
+  pose.add(part(0.58, 0.08, 0.52, C.collar, 0, 0.95, 0.55));
 
   // Beak
   const beak = part(0.28, 0.14, 0.35, C.beak, 0, 1.12, 0.95);
-  root.add(beak);
+  pose.add(beak);
 
   // Eyes
-  root.add(part(0.1, 0.1, 0.08, C.eye, 0.22, 1.28, 0.8));
-  root.add(part(0.1, 0.1, 0.08, C.eye, -0.22, 1.28, 0.8));
+  pose.add(part(0.1, 0.1, 0.08, C.eye, 0.22, 1.28, 0.8));
+  pose.add(part(0.1, 0.1, 0.08, C.eye, -0.22, 1.28, 0.8));
 
   // Wings
   const leftWing = part(0.18, 0.4, 0.7, C.wing, 0.52, 0.55, -0.05);
   const rightWing = part(0.18, 0.4, 0.7, C.wing, -0.52, 0.55, -0.05);
-  root.add(leftWing);
-  root.add(rightWing);
-  root.add(part(0.12, 0.22, 0.25, C.wingTip, 0.55, 0.48, -0.4));
-  root.add(part(0.12, 0.22, 0.25, C.wingTip, -0.55, 0.48, -0.4));
+  pose.add(leftWing);
+  pose.add(rightWing);
+  pose.add(part(0.12, 0.22, 0.25, C.wingTip, 0.55, 0.48, -0.4));
+  pose.add(part(0.12, 0.22, 0.25, C.wingTip, -0.55, 0.48, -0.4));
 
   // Tail
-  root.add(part(0.4, 0.25, 0.3, C.tail, 0, 0.65, -0.65));
+  pose.add(part(0.4, 0.25, 0.3, C.tail, 0, 0.65, -0.65));
 
   // Feet (pivoted for waddle)
   const leftFoot = new THREE.Group();
   leftFoot.position.set(0.28, 0.12, 0.1);
   leftFoot.add(part(0.22, 0.08, 0.35, C.foot, 0, 0, 0.05));
-  root.add(leftFoot);
+  pose.add(leftFoot);
 
   const rightFoot = new THREE.Group();
   rightFoot.position.set(-0.28, 0.12, 0.1);
   rightFoot.add(part(0.22, 0.08, 0.35, C.foot, 0, 0, 0.05));
-  root.add(rightFoot);
+  pose.add(rightFoot);
 
   const state = {
     moving: false,
@@ -78,15 +84,20 @@ export function createDuck() {
     bob: 0,
     baseY: 0,
     altitude: 0,
-    /** 0 = idle; (0,1] = barrel-roll progress */
     rollT: 0,
     rollDir: 1,
   };
 
   const ROLL_DURATION = 0.55;
 
+  function resetPoseTilt() {
+    pose.rotation.x = 0;
+    pose.rotation.z = 0;
+  }
+
   return {
     root,
+    pose,
     leftFoot,
     rightFoot,
     leftWing,
@@ -112,7 +123,7 @@ export function createDuck() {
       if (!flying) {
         state.altitude = Math.min(state.altitude, 0);
         state.rollT = 0;
-        root.rotation.z = 0;
+        resetPoseTilt();
       }
     },
 
@@ -148,54 +159,52 @@ export function createDuck() {
     },
 
     /**
-     * Ground waddle, hop tuck, or glide / bank / barrel roll.
-     * @param {number} throttle - forward thrust while flying (-1..1)
-     * @param {boolean} hopping
-     * @param {number} bank - A/D bank (-1..1); same sign as strafe / roll
-     * @param {boolean} gliding - Space hold
+     * @param {number} throttle - W forward / S brake (-1..1)
+     * @param {number} bank - A/D (-1..1)
+     * @param {number} climbRate - vertical speed for nose attitude
      */
-    update(dt, moving, flying = false, throttle = 0, hopping = false, bank = 0, gliding = false) {
+    update(dt, moving, flying = false, throttle = 0, hopping = false, bank = 0, gliding = false, climbRate = 0) {
       state.moving = moving;
       state.flying = flying;
       let yOffset = 0;
 
       if (flying) {
-        const flapRate = gliding ? 6 : 14 + Math.max(0, throttle) * 10;
+        const flapRate = gliding ? 5 : 12 + Math.max(0, throttle) * 14;
         state.flapPhase += dt * flapRate;
         const flap = Math.sin(state.flapPhase);
         const flapAbs = Math.abs(flap);
 
         if (gliding) {
-          // Wings spread wide and steady
           leftWing.rotation.z = THREE.MathUtils.lerp(leftWing.rotation.z, 0.95, 1 - Math.exp(-8 * dt));
           rightWing.rotation.z = THREE.MathUtils.lerp(rightWing.rotation.z, -0.95, 1 - Math.exp(-8 * dt));
           leftWing.rotation.x = THREE.MathUtils.lerp(leftWing.rotation.x, 0.05, 1 - Math.exp(-8 * dt));
           rightWing.rotation.x = THREE.MathUtils.lerp(rightWing.rotation.x, 0.05, 1 - Math.exp(-8 * dt));
         } else {
-          leftWing.rotation.z = 0.5 + flap * 0.7;
-          rightWing.rotation.z = -0.5 - flap * 0.7;
-          leftWing.rotation.x = flap * 0.15;
-          rightWing.rotation.x = flap * 0.15;
+          leftWing.rotation.z = 0.45 + flap * 0.75;
+          rightWing.rotation.z = -0.45 - flap * 0.75;
+          leftWing.rotation.x = flap * 0.18;
+          rightWing.rotation.x = flap * 0.18;
         }
 
         if (state.rollT > 0) {
           state.rollT += dt / ROLL_DURATION;
           if (state.rollT >= 1) {
             state.rollT = 0;
-            root.rotation.z = 0;
+            pose.rotation.z = 0;
           } else {
             const t = state.rollT;
             const eased = t * t * (3 - 2 * t);
-            // rollDir +1 = shove right; spin so right wing dips first (Three.js −z)
-            root.rotation.z = -eased * Math.PI * 2 * state.rollDir;
+            // +rollDir = right shove; −z dips right wing first
+            pose.rotation.z = -eased * Math.PI * 2 * state.rollDir;
           }
-          root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, 0, 1 - Math.exp(-10 * dt));
+          pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
-          // +bank (D) strafes right; −rotation.z dips the right wing to match
-          const targetBank = -bank * 0.55;
-          const targetPitch = Math.max(0, throttle) * -0.12;
-          root.rotation.z = THREE.MathUtils.lerp(root.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
-          root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
+          // D (+bank) → right strafe → right wing down (−z)
+          const targetBank = -bank * 0.5;
+          // Nose up when climbing, down when sinking
+          const targetPitch = THREE.MathUtils.clamp(-climbRate * 0.045, -0.35, 0.35);
+          pose.rotation.z = THREE.MathUtils.lerp(pose.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
+          pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
         }
 
         leftFoot.rotation.x = THREE.MathUtils.lerp(leftFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
@@ -203,8 +212,8 @@ export function createDuck() {
         leftFoot.position.y = 0.18;
         rightFoot.position.y = 0.18;
 
-        root.scale.set(1, 1, 1);
-        yOffset = gliding ? Math.sin(state.flapPhase * 0.35) * 0.03 : flapAbs * 0.04;
+        pose.scale.set(1, 1, 1);
+        yOffset = gliding ? Math.sin(state.flapPhase * 0.35) * 0.03 : flapAbs * 0.05;
         head.position.x *= 0.9;
         neck.position.x *= 0.9;
         head.position.y = 1.2;
@@ -212,15 +221,15 @@ export function createDuck() {
       } else if (hopping) {
         state.flapPhase += dt * 14;
         const flap = Math.sin(state.flapPhase);
-        root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, -0.2, 1 - Math.exp(-8 * dt));
-        root.rotation.z *= 0.9;
+        pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, -0.2, 1 - Math.exp(-8 * dt));
+        pose.rotation.z *= 0.9;
         leftWing.rotation.z = 0.35 + flap * 0.4;
         rightWing.rotation.z = -0.35 - flap * 0.4;
         leftFoot.rotation.x = 0.7;
         rightFoot.rotation.x = 0.7;
         leftFoot.position.y = 0.16;
         rightFoot.position.y = 0.16;
-        root.scale.set(1, 1, 1);
+        pose.scale.set(1, 1, 1);
         head.position.y = 1.2;
         neck.position.y = 0.95;
       } else if (moving) {
@@ -228,12 +237,12 @@ export function createDuck() {
         const swing = Math.sin(state.waddlePhase);
         const hop = Math.abs(Math.sin(state.waddlePhase * 2));
 
-        root.rotation.z = swing * 0.32;
-        root.rotation.x = hop * 0.08;
+        pose.rotation.z = swing * 0.32;
+        pose.rotation.x = hop * 0.08;
         yOffset = hop * 0.16;
 
         const squash = 1 - hop * 0.12;
-        root.scale.set(1 + (1 - squash) * 0.2, squash, 1 + (1 - squash) * 0.08);
+        pose.scale.set(1 + (1 - squash) * 0.2, squash, 1 + (1 - squash) * 0.08);
 
         leftFoot.rotation.x = swing * 1.05;
         rightFoot.rotation.x = -swing * 1.05;
@@ -250,11 +259,11 @@ export function createDuck() {
         neck.position.y = 0.95 + hop * 0.03;
         neck.position.x = -swing * 0.03;
       } else {
-        root.rotation.z *= 0.82;
-        root.rotation.x *= 0.82;
-        root.scale.x += (1 - root.scale.x) * 0.2;
-        root.scale.y += (1 - root.scale.y) * 0.2;
-        root.scale.z += (1 - root.scale.z) * 0.2;
+        pose.rotation.z *= 0.82;
+        pose.rotation.x *= 0.82;
+        pose.scale.x += (1 - pose.scale.x) * 0.2;
+        pose.scale.y += (1 - pose.scale.y) * 0.2;
+        pose.scale.z += (1 - pose.scale.z) * 0.2;
         leftFoot.rotation.x *= 0.82;
         rightFoot.rotation.x *= 0.82;
         leftFoot.position.y += (0.12 - leftFoot.position.y) * 0.2;
