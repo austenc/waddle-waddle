@@ -190,7 +190,8 @@ export function createDuck() {
           }
           root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
-          const targetBank = bank * 0.55;
+          // Match third-person bank sense (A = tilt / strafe screen-left)
+          const targetBank = -bank * 0.55;
           const targetPitch = pitch * -0.45;
           root.rotation.z = THREE.MathUtils.lerp(root.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
           root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));

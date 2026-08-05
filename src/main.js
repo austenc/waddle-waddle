@@ -6,7 +6,6 @@ import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
 
 const SPEED = 5.2;
-const FLY_SPEED = 14;
 const GLIDE_SPEED = 17;
 const BANK_SPEED = 9;
 const PITCH_SPEED = 10;
@@ -190,24 +189,29 @@ function tick() {
       gliding = controls.isGliding();
 
       // Light coordinated turn from bank + explicit Q/E rudder
-      const yawRate = axes.rudder * RUDDER_SPEED + bank * 0.55;
+      // Negate bank for third-person (camera behind): A = screen-left
+      const bankSense = -bank;
+      const yawRate = axes.rudder * RUDDER_SPEED + bankSense * 0.55;
       duckYaw += yawRate * dt;
       duck.setFacing(duckYaw);
 
-      const forwardSpeed = gliding ? GLIDE_SPEED : FLY_SPEED;
       const fx = Math.sin(duckYaw);
       const fz = Math.cos(duckYaw);
       const rx = Math.cos(duckYaw);
       const rz = -Math.sin(duckYaw);
 
-      // Constant forward + bank strafe
-      let vx = fx * forwardSpeed + rx * bank * BANK_SPEED;
-      let vz = fz * forwardSpeed + rz * bank * BANK_SPEED;
+      // No auto-throttle — forward only while gliding (Space). Bank strafe always.
+      let vx = rx * bankSense * BANK_SPEED;
+      let vz = rz * bankSense * BANK_SPEED;
+      if (gliding) {
+        vx += fx * GLIDE_SPEED;
+        vz += fz * GLIDE_SPEED;
+      }
 
-      // Star Fox roll: spin + lateral shove
+      // Star Fox roll: spin + lateral shove (same screen-left sense as bank)
       const rollDir = controls.consumeBarrelRoll();
       if (rollDir !== 0) {
-        duck.triggerBarrelRoll(rollDir);
+        duck.triggerBarrelRoll(-rollDir);
       }
       if (duck.isBarrelRolling()) {
         const dir = duck.getRollDir();
@@ -231,7 +235,7 @@ function tick() {
         duck.setAltitude(alt);
       }
 
-      moving = true;
+      moving = gliding || Math.abs(bank) > 0.05 || Math.abs(pitch) > 0.05;
     } else {
       const input = controls.getMoveVector();
 
