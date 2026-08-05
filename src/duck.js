@@ -26,13 +26,20 @@ function part(w, h, d, color, x, y, z) {
 
 /**
  * Voxel mallard.
- * root = position + yaw only
- * pose = pitch / bank / waddle tilt (avoids Euler coupling that made W look like a roll)
+ * root = world position + yaw
+ * tilt = bank / pitch / roll about body center (no sideways lunge)
+ * pose = mesh parts + squash (offset so tilt origin sits in the chest)
  */
 export function createDuck() {
+  const BODY_CENTER_Y = 0.55;
+
   const root = new THREE.Group();
+  const tilt = new THREE.Group();
+  tilt.position.y = BODY_CENTER_Y;
   const pose = new THREE.Group();
-  root.add(pose);
+  pose.position.y = -BODY_CENTER_Y;
+  root.add(tilt);
+  tilt.add(pose);
 
   // Body
   pose.add(part(0.9, 0.55, 1.15, C.body, 0, 0.55, 0));
@@ -90,13 +97,14 @@ export function createDuck() {
 
   const ROLL_DURATION = 0.55;
 
-  function resetPoseTilt() {
-    pose.rotation.x = 0;
-    pose.rotation.z = 0;
+  function resetTilt() {
+    tilt.rotation.x = 0;
+    tilt.rotation.z = 0;
   }
 
   return {
     root,
+    tilt,
     pose,
     leftFoot,
     rightFoot,
@@ -123,7 +131,7 @@ export function createDuck() {
       if (!flying) {
         state.altitude = Math.min(state.altitude, 0);
         state.rollT = 0;
-        resetPoseTilt();
+        resetTilt();
       }
     },
 
@@ -190,21 +198,21 @@ export function createDuck() {
           state.rollT += dt / ROLL_DURATION;
           if (state.rollT >= 1) {
             state.rollT = 0;
-            pose.rotation.z = 0;
+            tilt.rotation.z = 0;
           } else {
             const t = state.rollT;
             const eased = t * t * (3 - 2 * t);
             // +rollDir = right shove; −z dips right wing first
-            pose.rotation.z = -eased * Math.PI * 2 * state.rollDir;
+            tilt.rotation.z = -eased * Math.PI * 2 * state.rollDir;
           }
-          pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, 0, 1 - Math.exp(-10 * dt));
+          tilt.rotation.x = THREE.MathUtils.lerp(tilt.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
           // D (+bank) → right strafe → right wing down (−z)
           const targetBank = -bank * 0.5;
           // Nose up when climbing, down when sinking
           const targetPitch = THREE.MathUtils.clamp(-climbRate * 0.045, -0.35, 0.35);
-          pose.rotation.z = THREE.MathUtils.lerp(pose.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
-          pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
+          tilt.rotation.z = THREE.MathUtils.lerp(tilt.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
+          tilt.rotation.x = THREE.MathUtils.lerp(tilt.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
         }
 
         leftFoot.rotation.x = THREE.MathUtils.lerp(leftFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
@@ -221,8 +229,8 @@ export function createDuck() {
       } else if (hopping) {
         state.flapPhase += dt * 14;
         const flap = Math.sin(state.flapPhase);
-        pose.rotation.x = THREE.MathUtils.lerp(pose.rotation.x, -0.2, 1 - Math.exp(-8 * dt));
-        pose.rotation.z *= 0.9;
+        tilt.rotation.x = THREE.MathUtils.lerp(tilt.rotation.x, -0.2, 1 - Math.exp(-8 * dt));
+        tilt.rotation.z *= 0.9;
         leftWing.rotation.z = 0.35 + flap * 0.4;
         rightWing.rotation.z = -0.35 - flap * 0.4;
         leftFoot.rotation.x = 0.7;
@@ -237,8 +245,8 @@ export function createDuck() {
         const swing = Math.sin(state.waddlePhase);
         const hop = Math.abs(Math.sin(state.waddlePhase * 2));
 
-        pose.rotation.z = swing * 0.32;
-        pose.rotation.x = hop * 0.08;
+        tilt.rotation.z = swing * 0.32;
+        tilt.rotation.x = hop * 0.08;
         yOffset = hop * 0.16;
 
         const squash = 1 - hop * 0.12;
@@ -259,8 +267,8 @@ export function createDuck() {
         neck.position.y = 0.95 + hop * 0.03;
         neck.position.x = -swing * 0.03;
       } else {
-        pose.rotation.z *= 0.82;
-        pose.rotation.x *= 0.82;
+        tilt.rotation.z *= 0.82;
+        tilt.rotation.x *= 0.82;
         pose.scale.x += (1 - pose.scale.x) * 0.2;
         pose.scale.y += (1 - pose.scale.y) * 0.2;
         pose.scale.z += (1 - pose.scale.z) * 0.2;
