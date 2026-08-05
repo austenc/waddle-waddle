@@ -143,25 +143,40 @@ export function createDuck() {
       return true;
     },
 
+    getRollDir() {
+      return state.rollDir;
+    },
+
     /**
-     * Ground waddle, hop tuck, or flight flaps / barrel roll.
-     * @param {number} vertical - climb input while flying (-1..1)
-     * @param {boolean} hopping - mid hop (not free-flying)
+     * Ground waddle, hop tuck, or glide / bank / barrel roll.
+     * @param {number} pitch - climb input while flying (-1..1)
+     * @param {boolean} hopping
+     * @param {number} bank - A/D bank (-1..1)
+     * @param {boolean} gliding - Space hold
      */
-    update(dt, moving, flying = false, vertical = 0, hopping = false) {
+    update(dt, moving, flying = false, pitch = 0, hopping = false, bank = 0, gliding = false) {
       state.moving = moving;
       state.flying = flying;
       let yOffset = 0;
 
       if (flying) {
-        state.flapPhase += dt * (18 + Math.abs(vertical) * 8);
+        const flapRate = gliding ? 6 : 16 + Math.abs(pitch) * 8;
+        state.flapPhase += dt * flapRate;
         const flap = Math.sin(state.flapPhase);
         const flapAbs = Math.abs(flap);
 
-        leftWing.rotation.z = 0.55 + flap * 0.75;
-        rightWing.rotation.z = -0.55 - flap * 0.75;
-        leftWing.rotation.x = flap * 0.15;
-        rightWing.rotation.x = flap * 0.15;
+        if (gliding) {
+          // Wings spread wide and steady
+          leftWing.rotation.z = THREE.MathUtils.lerp(leftWing.rotation.z, 0.95, 1 - Math.exp(-8 * dt));
+          rightWing.rotation.z = THREE.MathUtils.lerp(rightWing.rotation.z, -0.95, 1 - Math.exp(-8 * dt));
+          leftWing.rotation.x = THREE.MathUtils.lerp(leftWing.rotation.x, 0.05, 1 - Math.exp(-8 * dt));
+          rightWing.rotation.x = THREE.MathUtils.lerp(rightWing.rotation.x, 0.05, 1 - Math.exp(-8 * dt));
+        } else {
+          leftWing.rotation.z = 0.5 + flap * 0.7;
+          rightWing.rotation.z = -0.5 - flap * 0.7;
+          leftWing.rotation.x = flap * 0.15;
+          rightWing.rotation.x = flap * 0.15;
+        }
 
         if (state.rollT > 0) {
           state.rollT += dt / ROLL_DURATION;
@@ -175,16 +190,10 @@ export function createDuck() {
           }
           root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, 0, 1 - Math.exp(-10 * dt));
         } else {
-          root.rotation.x = THREE.MathUtils.lerp(
-            root.rotation.x,
-            vertical * -0.4,
-            1 - Math.exp(-8 * dt),
-          );
-          if (moving) {
-            root.rotation.z = Math.sin(state.flapPhase * 0.5) * 0.1;
-          } else {
-            root.rotation.z *= 0.85;
-          }
+          const targetBank = bank * 0.55;
+          const targetPitch = pitch * -0.45;
+          root.rotation.z = THREE.MathUtils.lerp(root.rotation.z, targetBank, 1 - Math.exp(-10 * dt));
+          root.rotation.x = THREE.MathUtils.lerp(root.rotation.x, targetPitch, 1 - Math.exp(-8 * dt));
         }
 
         leftFoot.rotation.x = THREE.MathUtils.lerp(leftFoot.rotation.x, 0.9, 1 - Math.exp(-10 * dt));
@@ -193,7 +202,7 @@ export function createDuck() {
         rightFoot.position.y = 0.18;
 
         root.scale.set(1, 1, 1);
-        yOffset = flapAbs * 0.04;
+        yOffset = gliding ? Math.sin(state.flapPhase * 0.35) * 0.03 : flapAbs * 0.04;
         head.position.x *= 0.9;
         neck.position.x *= 0.9;
         head.position.y = 1.2;

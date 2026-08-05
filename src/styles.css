@@ -392,15 +392,15 @@ canvas {
 .roll-pad {
   pointer-events: none;
   touch-action: none;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 2px solid rgba(42, 26, 5, 0.35);
   background: rgba(58, 143, 196, 0.92);
   color: #f3efe4;
   font-family: "Fredoka", sans-serif;
   font-weight: 700;
-  font-size: 0.72rem;
+  font-size: 0.85rem;
   letter-spacing: 0.04em;
   cursor: pointer;
   display: grid;
@@ -412,6 +412,17 @@ canvas {
   transform: scale(0.85);
   transition: opacity 0.15s ease, transform 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+}
+
+.roll-row {
+  display: none;
+  gap: 0.45rem;
+  pointer-events: none;
+}
+
+.fly-stack.is-flying .roll-row {
+  display: flex;
+  pointer-events: auto;
 }
 
 .fly-stack.is-flying .roll-pad {

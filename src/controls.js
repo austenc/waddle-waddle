@@ -7,15 +7,35 @@ export function createControls() {
   let touchHonkDown = false;
   let touchJump = false;
   let touchLand = false;
-  let touchAscend = false;
-  let touchDescend = false;
-  let touchBarrelRoll = false;
+  let touchGlide = false;
+  let touchBank = 0;
+  let touchPitch = 0;
+  let touchRudder = 0;
+  let touchFlightActive = false;
   let honkHeld = false;
   let jumpHeld = false;
   let landHeld = false;
-  let barrelHeld = false;
+
+  /** Double-tap A/D → Star Fox barrel roll */
+  const DOUBLE_TAP_MS = 260;
+  let lastTapA = 0;
+  let lastTapD = 0;
+  let pendingRoll = 0; // -1 left, +1 right
 
   const onDown = (e) => {
+    // Ignore OS key-repeat so holding A/D to bank doesn't spam rolls
+    if (!e.repeat) {
+      const now = performance.now();
+      if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
+        if (now - lastTapA < DOUBLE_TAP_MS) pendingRoll = -1;
+        lastTapA = now;
+      }
+      if (e.code === 'KeyD' || e.code === 'ArrowRight') {
+        if (now - lastTapD < DOUBLE_TAP_MS) pendingRoll = 1;
+        lastTapD = now;
+      }
+    }
+
     keys.add(e.code);
     if (
       [
@@ -54,18 +74,28 @@ export function createControls() {
         touchX = 0;
         touchZ = 0;
         touchActive = false;
+        touchBank = 0;
+        touchPitch = 0;
+        touchFlightActive = false;
         return;
       }
       const inv = 1 / Math.max(len, 1);
       touchX = x * inv;
       touchZ = z * inv;
       touchActive = true;
+      // While flying the stick is bank (x) + pitch (y): up on stick = climb
+      touchBank = touchX;
+      touchPitch = -touchZ;
+      touchFlightActive = true;
     },
 
     clearTouchMove() {
       touchX = 0;
       touchZ = 0;
       touchActive = false;
+      touchBank = 0;
+      touchPitch = 0;
+      touchFlightActive = false;
     },
 
     setTouchHonk(down) {
@@ -80,18 +110,19 @@ export function createControls() {
       touchLand = true;
     },
 
-    setTouchAscend(down) {
-      touchAscend = down;
+    setTouchGlide(down) {
+      touchGlide = down;
     },
 
-    setTouchDescend(down) {
-      touchDescend = down;
+    setTouchRudder(v) {
+      touchRudder = Math.max(-1, Math.min(1, v));
     },
 
-    requestTouchBarrelRoll() {
-      touchBarrelRoll = true;
+    requestTouchBarrelRoll(dir = 1) {
+      pendingRoll = dir >= 0 ? 1 : -1;
     },
 
+    /** Ground / hop movement (camera-relative WASD). */
     getMoveVector() {
       let x = 0;
       let z = 0;
@@ -113,15 +144,45 @@ export function createControls() {
       return { x, z, moving: len > 0 };
     },
 
-    /** +1 ascend, -1 descend. Left Shift is honk — Right Shift still descends. */
-    getVertical() {
-      let v = 0;
-      if (keys.has('KeyE') || touchAscend) v += 1;
-      if (keys.has('KeyQ') || keys.has('ShiftRight') || touchDescend) v -= 1;
-      return Math.max(-1, Math.min(1, v));
+    /**
+     * Flight inputs: constant forward is handled in main.
+     * bank -1..1 (A/D), pitch -1..1 (W up / S down), rudder -1..1 (Q/E).
+     */
+    getFlightAxes() {
+      let bank = 0;
+      let pitch = 0;
+      let rudder = 0;
+
+      if (keys.has('KeyA') || keys.has('ArrowLeft')) bank -= 1;
+      if (keys.has('KeyD') || keys.has('ArrowRight')) bank += 1;
+      if (keys.has('KeyW') || keys.has('ArrowUp')) pitch += 1;
+      if (keys.has('KeyS') || keys.has('ArrowDown')) pitch -= 1;
+      if (keys.has('KeyQ')) rudder -= 1;
+      if (keys.has('KeyE')) rudder += 1;
+
+      if (touchFlightActive) {
+        bank = touchBank;
+        pitch = touchPitch;
+      }
+      rudder += touchRudder;
+
+      bank = Math.max(-1, Math.min(1, bank));
+      pitch = Math.max(-1, Math.min(1, pitch));
+      rudder = Math.max(-1, Math.min(1, rudder));
+
+      return { bank, pitch, rudder };
     },
 
-    /** Space / JUMP pad — hop, double-jump to fly, or roll while flying (handled by caller). */
+    isGliding() {
+      return keys.has('Space') || touchGlide;
+    },
+
+    /** Call each frame while flying so Space-as-glide doesn't eat the next hop. */
+    syncJumpLatch() {
+      jumpHeld = keys.has('Space') || touchGlide;
+    },
+
+    /** Space / JUMP — hop & double-jump only (not used as edge while gliding in air). */
     consumeJump() {
       const pressed = keys.has('Space') || touchJump;
       touchJump = false;
@@ -150,21 +211,14 @@ export function createControls() {
       return false;
     },
 
+    /** -1 left roll, +1 right roll, 0 none. Double-tap A/D or touch roll pads. */
     consumeBarrelRoll() {
-      const pressed = touchBarrelRoll;
-      touchBarrelRoll = false;
-      if (pressed) {
-        if (!barrelHeld) {
-          barrelHeld = true;
-          return true;
-        }
-        return false;
-      }
-      barrelHeld = false;
-      return false;
+      const dir = pendingRoll;
+      pendingRoll = 0;
+      return dir;
     },
 
-    /** H or Left Shift (Space is jump). */
+    /** H or Left Shift. */
     consumeHonk() {
       const pressed = keys.has('KeyH') || keys.has('ShiftLeft') || touchHonkDown;
       if (pressed) {
