@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "editor": "vite --open /tools/character-editor/",
     "build": "vite build",
     "preview": "vite preview"
   },
