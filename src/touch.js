@@ -1,5 +1,5 @@
 /**
- * On-screen joystick (left) + HONK button (right) for phones / touch.
+ * On-screen joystick + JUMP / glide / bank rolls + HONK for phones.
  */
 export function createTouchControls(controls) {
   const root = document.createElement('div');
@@ -10,17 +10,32 @@ export function createTouchControls(controls) {
       <div class="joy-base" aria-hidden="true"></div>
       <div class="joy-knob" id="joy-knob"></div>
     </div>
-    <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
-      <span class="honk-pad-label">HONK</span>
-    </button>
+    <div class="touch-actions">
+      <div class="fly-stack is-grounded" id="fly-stack">
+        <button type="button" class="fly-pad" id="jump-pad" aria-label="Jump or glide">
+          <span class="fly-pad-label">JUMP</span>
+        </button>
+        <div class="roll-row">
+          <button type="button" class="roll-pad" id="roll-left" aria-label="Barrel roll left">◀</button>
+          <button type="button" class="roll-pad" id="roll-right" aria-label="Barrel roll right">▶</button>
+        </div>
+      </div>
+      <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
+        <span class="honk-pad-label">HONK</span>
+      </button>
+    </div>
   `;
   document.body.appendChild(root);
 
   const joy = root.querySelector('#joy');
   const knob = root.querySelector('#joy-knob');
   const honkPad = root.querySelector('#honk-pad');
+  const jumpPad = root.querySelector('#jump-pad');
+  const rollLeft = root.querySelector('#roll-left');
+  const rollRight = root.querySelector('#roll-right');
+  const flyStack = root.querySelector('#fly-stack');
 
-  const MAX = 46; // knob travel in px
+  const MAX = 46;
   let joyPointerId = null;
 
   function isTouchDevice() {
@@ -40,8 +55,16 @@ export function createTouchControls(controls) {
       root.setAttribute('aria-hidden', 'true');
       controls.clearTouchMove();
       controls.setTouchHonk(false);
+      controls.setTouchGlide(false);
       knob.style.transform = 'translate(-50%, -50%)';
     }
+  }
+
+  function setFlying(flying) {
+    flyStack.classList.toggle('is-flying', flying);
+    flyStack.classList.toggle('is-grounded', !flying);
+    jumpPad.querySelector('.fly-pad-label').textContent = flying ? 'GLIDE' : 'JUMP';
+    if (!flying) controls.setTouchGlide(false);
   }
 
   function readJoy(clientX, clientY) {
@@ -56,7 +79,6 @@ export function createTouchControls(controls) {
       dy = (dy / len) * MAX;
     }
     knob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    // Screen up = forward = keyboard W = z -1
     controls.setTouchMove(dx / MAX, dy / MAX);
   }
 
@@ -93,7 +115,6 @@ export function createTouchControls(controls) {
     honkPad.setPointerCapture(e.pointerId);
     honkPad.classList.add('is-held');
     controls.setTouchHonk(true);
-    // Extra unlock on the honk gesture itself (iOS Safari)
     if (typeof controls.onHonkGesture === 'function') controls.onHonkGesture();
   });
 
@@ -105,7 +126,38 @@ export function createTouchControls(controls) {
   honkPad.addEventListener('pointercancel', stopHonk);
   honkPad.addEventListener('pointerleave', stopHonk);
 
-  // Block page scroll / pinch while touching pads
+  // Ground: tap JUMP. Air: hold GLIDE.
+  jumpPad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    jumpPad.setPointerCapture(e.pointerId);
+    jumpPad.classList.add('is-held');
+    if (flyStack.classList.contains('is-flying')) {
+      controls.setTouchGlide(true);
+    } else {
+      controls.requestTouchJump();
+    }
+  });
+  const stopJump = () => {
+    jumpPad.classList.remove('is-held');
+    controls.setTouchGlide(false);
+  };
+  jumpPad.addEventListener('pointerup', stopJump);
+  jumpPad.addEventListener('pointercancel', stopJump);
+
+  function bindRoll(el, dir) {
+    el.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('is-held');
+      controls.requestTouchBarrelRoll(dir);
+    });
+    const stop = () => el.classList.remove('is-held');
+    el.addEventListener('pointerup', stop);
+    el.addEventListener('pointercancel', stop);
+  }
+  bindRoll(rollLeft, -1);
+  bindRoll(rollRight, 1);
+
   root.addEventListener(
     'touchmove',
     (e) => {
@@ -117,6 +169,7 @@ export function createTouchControls(controls) {
   return {
     root,
     setActive,
+    setFlying,
     isTouchDevice,
   };
 }
