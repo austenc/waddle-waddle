@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Duck Character Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./editor.css" />
+  </head>
+  <body>
+    <div id="viewport"></div>
+
+    <aside id="panel">
+      <header class="panel-head">
+        <div>
+          <p class="eyebrow">dev tool</p>
+          <h1>Character Editor</h1>
+        </div>
+        <p class="sub">Spin the duck · preview anims · tweak look</p>
+      </header>
+
+      <section class="block">
+        <h2>Preview</h2>
+        <div class="mode-grid" id="mode-grid"></div>
+        <label class="row check">
+          <input type="checkbox" id="auto-orbit" checked />
+          <span>Auto-orbit</span>
+        </label>
+        <div class="flight-sliders is-hidden" id="flight-sliders">
+          <label class="row">
+            <span>Bank</span>
+            <input type="range" id="bank" min="-1" max="1" step="0.01" value="0" />
+          </label>
+          <label class="row">
+            <span>Throttle</span>
+            <input type="range" id="throttle" min="-1" max="1" step="0.01" value="0.6" />
+          </label>
+          <label class="row">
+            <span>Climb</span>
+            <input type="range" id="climb" min="-8" max="8" step="0.1" value="0" />
+          </label>
+        </div>
+        <button type="button" class="btn ghost" id="honk-btn">Honk</button>
+      </section>
+
+      <section class="block">
+        <h2>Colors</h2>
+        <div class="color-grid" id="color-grid"></div>
+      </section>
+
+      <section class="block">
+        <h2>Model</h2>
+        <label class="row">
+          <span>Scale</span>
+          <input type="range" id="scale" min="0.5" max="2" step="0.01" value="1" />
+          <output id="scale-out">1.00</output>
+        </label>
+        <label class="row">
+          <span>Tilt pivot Y</span>
+          <input type="range" id="bodyCenterY" min="0.2" max="1" step="0.01" value="0.55" />
+          <output id="bodyCenterY-out">0.55</output>
+        </label>
+      </section>
+
+      <section class="block">
+        <h2>Animation</h2>
+        <div class="anim-grid" id="anim-grid"></div>
+      </section>
+
+      <section class="block actions">
+        <button type="button" class="btn" id="copy-btn">Copy JSON</button>
+        <button type="button" class="btn ghost" id="reset-btn">Reset defaults</button>
+      </section>
+
+      <p class="hint">Drag to orbit · scroll to zoom · changes apply live</p>
+    </aside>
+
+    <script type="module" src="./editor.js"></script>
+  </body>
+</html>
