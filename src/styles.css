@@ -21,3 +21,7 @@ dialog{color:var(--ink);background:var(--cream);border:1px solid #fff8e8;border-
 .has-touch-controls .controls-strip{display:none}.has-touch-controls #context-hint{bottom:180px}.has-touch-controls #flight-meter{bottom:215px}
 #qa-panel.collapsed{top:8px;bottom:auto!important;width:auto!important}#qa-panel.collapsed #qa-buttons,#qa-panel.collapsed #qa-status,#qa-panel.collapsed>b{display:none}
 @media(max-height:520px){.has-touch-controls #context-hint{bottom:28px;width:40%}.has-touch-controls #flight-meter{bottom:70px}}
+#mischief-card{position:absolute;left:25px;bottom:105px;width:264px;padding:14px 17px;background:#faf2dcef;border-left:3px solid #d19b55;border-radius:3px 3px 16px 3px}#mischief-card small{display:block;font-size:8px;letter-spacing:.1em}#mischief-card strong{display:block;font:500 18px 'Fraunces',serif;margin:8px 0}#mischief-card p{font-size:11px;line-height:1.5;margin:0}
+@media(max-width:700px){#mischief-card{left:14px;bottom:100px;width:205px;padding:10px 12px}#mischief-card strong{font-size:15px;margin:5px 0}#mischief-card p{font-size:10px}.has-touch-controls #mischief-card{bottom:240px}}
+@media(max-height:520px){#mischief-card,.has-touch-controls #mischief-card{left:250px;bottom:auto;top:12px;width:220px}#mischief-card p{display:none}#mischief-card strong{margin-bottom:0}}
+@media(max-width:700px){#mischief-card{display:none}}

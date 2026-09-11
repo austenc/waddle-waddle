@@ -1,5 +1,7 @@
 # Ducks — Mallard City
 
+[Play on GitHub Pages](https://austenc.github.io/waddle-waddle/)
+
 A small exploration adventure about bringing a lost flock home. Waddle through a waterfront city, paddle its canals, and land on rooftop gardens. The city contains twenty larger buildings, sixteen terraced houses, a park, four bridges, and distinctive garden, glasshouse, and beacon landmarks.
 
 ## Play
@@ -59,3 +61,9 @@ Multiplayer remains a separate iteration. World generation is seeded, collision 
 ## Audio credit
 
 Mallard call: [XC62258](https://xeno-canto.org/62258) by Jonathon Jongsma ([CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)).
+
+## Market mischief
+
+Follow the breadcrumbs around the landing dock to **Willow & Rye**, beside the east park path. Honk near the sandwich cart to borrow lunch; the duck carries it in its bill while the vendor objects. Fly to the checked blanket on the nearby Garden District roof, land, and honk to share a picnic with two neighbors. Paddle quickly or honk beside the east pond bank to splash three distinct pigeons. Finishing both activities earns Picnic Club membership and a basket beside the home nest.
+
+Choose **Follow the crumbs** in Field notes to track this optional adventure. Choosing a friend or trail switches back to that objective. Mischief progress, including a sandwich being carried, survives a reload without changing existing rescue saves. The development **Market mischief** playtest follows the route using normal inputs.

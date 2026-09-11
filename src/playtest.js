@@ -64,3 +64,21 @@ export function createJourney(player, mission, save) {
     },
   };
 }
+
+export function createMischiefJourney(player,mission,game){
+  const steps=[
+    {name:'Around the landing dock',p:{x:23,y:0,z:6}},
+    {name:'Follow crumbs to the cart',p:{x:23,y:0,z:-9.5}},
+    {name:'Splash the pondside pigeons',p:{x:15,y:-.27,z:5},flight:true},
+    {name:'Share the secret picnic',p:{x:40,y:28.3,z:3},flight:true},
+  ];
+  let index=0,pilot=createTravelPilot(steps[0].p),elapsed=0,total=0;
+  return {update(dt){
+    elapsed+=dt;total+=dt;
+    if(index===steps.length)return {input:{x:0,z:0},status:`MISCHIEF ${game.complete?'PASS':'FAIL'} · ${total.toFixed(1)}s · picnic ${game.state.picnic} · splashed ${game.state.splashed.length}`,done:true};
+    if(elapsed>70)return {input:{x:0,z:0},status:`MISCHIEF FAIL: ${steps[index].name}`,done:true};
+    const result=pilot(player.state);
+    if(result.arrived){mission.honk(player.state);index++;elapsed=0;if(index<steps.length)pilot=createTravelPilot(steps[index].p,steps[index].flight);}
+    return {input:result.input,status:`MISCHIEF ${index+1}/${steps.length} · ${steps[index]?.name??'Picnic Club'} · ${total.toFixed(1)}s`,done:false};
+  }};
+}

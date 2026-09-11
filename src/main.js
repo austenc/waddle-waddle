@@ -4,6 +4,7 @@ import { createDuck } from './duck.js';
 import { createControls } from './controls.js';
 import { createHonk } from './honk.js';
 import { createTouchControls } from './touch.js';
+import { createMischief } from './mischief.js';
 import { createMission } from './mission.js';
 import { createPlayer } from './player.js';
 import { createAudio } from './audio.js';
@@ -29,13 +30,17 @@ const previousPose={...player.state};
 const duck = createDuck();scene.add(duck.root);
 const controls = createControls();const touch = createTouchControls(controls);const honk = createHonk();
 const audio = createAudio();const effects = createEffects(scene);const life = createCityLife(scene);
+let mischief;
 const feedback = {
+  objective:()=>mischief?.objective,
+  trackFlock:()=>mischief?.stopTracking(),
   persist(){return qaMode?true:writeSave(save);},
   cue(name){audio.cue(({checkpoint:'pickup',start:'flap',splash:'landing',land:'landing',takeoff:'flap'})[name]??name);},
   burst(position,color,count){if(!save.reducedMotion)effects.burst(position,color,count);},
-  honk(position){life.honk(position);if(!save.muted)honk.play();duck.triggerHonk();if(!save.reducedMotion)effects.honk(position);},
+  honk(position){mischief?.interact(position);mischief?.splash(life.splash(position));life.honk(position);if(!save.muted)honk.play();duck.triggerHonk();if(!save.reducedMotion)effects.honk(position);},
 };
 const mission = createMission(scene,world,save,feedback);
+mischief=createMischief(scene,world,duck,save,feedback,mission.announce);
 let playing = false, paused = false, accumulator = 0, gameTime = 0;
 let lastInput = {jump:false};
 let followDistance=10.5;
@@ -94,6 +99,8 @@ function updateHint(p){
   else if(p.mode==='fly')text='Space climb · S brake & land · C dive · Shift boost';
   else if(p.mode==='swim')text='Follow blue rings to discover a swimming trail.';
   else text='H honk · Hold Space to fly · J field notes';
+  const mischiefTarget=mischief?.objective;
+  if(mischiefTarget){text=mischiefTarget.y>2?(p.mode==='ground'&&Math.hypot(p.x-mischiefTarget.x,p.z-mischiefTarget.z)<3&&p.y>20?'Honk to share lunch or greet your picnic neighbors.':'Hold Space to fly. Brake above the picnic roof, then land and honk.'):mischiefTarget.y<0?'Paddle quickly near the east pond bank, or honk from the water to splash.':'Follow the crumbs. Honk beside the sandwich cart.';}
   if(p.mode==='swim' && swimmingBoom(p,{x:p.x,y:p.y+6,z:p.z},world.collision.solids).y<p.y+5) text='A low bridge. Paddle into open water before taking flight.';
   if(touch.isTouchDevice()){text=text.replace('Hold W to waddle', 'Push the stick forward to waddle').replaceAll('Hold Space', 'Hold FLY').replaceAll('Release Space', 'Release FLY').replace('S slows you down', 'Pull the stick back to slow down').replace('Space climb · S brake & land · C dive · Shift boost', 'FLY climb · Stick back to land · DOWN dive · BOOST').replace('H honk · Hold FLY to fly · J field notes', 'HONK calls friends · Hold FLY to fly · Tap Field notes');}
   el.textContent=text;
@@ -139,7 +146,9 @@ function tick(){
   const targetFov=54;
   camera.fov=THREE.MathUtils.lerp(camera.fov,targetFov,1-Math.exp(-3*frameDt));camera.updateProjectionMatrix();
   if(dt){
-    mission.update(dt,gameTime,p,camera);effects.update(dt);audio.update(dt,{flying,swimming,speed:p.speed});
+    mission.update(dt,gameTime,p,camera);mischief.update(dt,gameTime,p,camera);
+    if(p.mode==='swim'&&p.speed>3)mischief.splash(life.splash(p));
+    effects.update(dt);audio.update(dt,{flying,swimming,speed:p.speed});
     document.getElementById('location').textContent=`${world.district(p.x,p.z)} / ${flying?'in the clouds':swimming?'on the water':p.y>3?'above it all':'a little wandering'}`;
     document.getElementById('stamina-fill').style.width=`${p.stamina*100}%`;updateHint(p);
   }
@@ -149,5 +158,5 @@ function tick(){
   qa?.update(frameDt,{...p,paused,drawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles});
   requestAnimationFrame(tick);
 }
-if(qaMode){const {createQA}=await import('./qa.js');qa=createQA({player,mission,start,save,setCamera:y=>{camYaw=y;},resume:()=>dialogs.forEach(d=>d.close()),feedback});}
+if(qaMode){const {createQA}=await import('./qa.js');qa=createQA({player,mission,start,save,setCamera:y=>{camYaw=y;},resume:()=>dialogs.forEach(d=>d.close()),feedback,mischief});}
 tick();

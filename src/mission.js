@@ -47,6 +47,7 @@ export function createMission(scene, world, save, feedback) {
   const landingRing = new THREE.Mesh(new THREE.RingGeometry(2.2, 2.32, 48), new THREE.MeshBasicMaterial({ color: '#f4d288', transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
   landingRing.rotation.x = -Math.PI / 2; scene.add(landingRing);
   function refresh() {
+    document.getElementById('mission-label').textContent='YOUR FLOCK';
     const target = friends[targetId];
     document.getElementById('flock-count').textContent = `${save.rescued.length} / 5`;
     document.getElementById('feather-count').textContent = `${save.feathers.length} / 18`;
@@ -58,12 +59,12 @@ export function createMission(scene, world, save, feedback) {
       const button = document.createElement('button'); button.className = `journal-entry${f.id === targetId ? ' selected' : ''}`;
       button.innerHTML = `<span>${f.found ? '✓' : '◇'} ${f.name}</span><small>${f.place}</small>`;
       button.disabled = f.found;
-      button.addEventListener('click', () => { targetId = f.id; selectedTrial = null; refresh(); document.getElementById('journal-dialog').close(); }); journal.append(button);
+      button.addEventListener('click', () => { feedback.trackFlock?.(); targetId = f.id; selectedTrial = null; refresh(); document.getElementById('journal-dialog').close(); }); journal.append(button);
     }
     const times = document.getElementById('trial-records'); times.replaceChildren();
     for (const trial of TRIALS) {
       const row = document.createElement('button'); row.className = 'record';
-      row.addEventListener('click', () => { selectedTrial = trial.id; refresh(); document.getElementById('journal-dialog').close(); announce(`Follow the marker to ${trial.name}.`); });
+      row.addEventListener('click', () => { feedback.trackFlock?.(); selectedTrial = trial.id; refresh(); document.getElementById('journal-dialog').close(); announce(`Follow the marker to ${trial.name}.`); });
       const best = save.trials[trial.id]; row.textContent = `${best && best <= trial.gold ? '★' : '○'} ${trial.name} — ${best ? `${best.toFixed(1)}s` : 'Unexplored'} · gold ${trial.gold}s`;
       times.append(row);
     }
@@ -114,7 +115,7 @@ export function createMission(scene, world, save, feedback) {
   return {
     honk, announce, refresh, trialState,
     get objective() { return currentObjective; },
-    cycleTarget() { const ids = friends.filter(f=>!f.found).map(f=>f.id); if (ids.length) { targetId = ids[(ids.indexOf(targetId)+1)%ids.length];selectedTrial = null;refresh(); } },
+    cycleTarget() { feedback.trackFlock?.(); const ids = friends.filter(f=>!f.found).map(f=>f.id); if (ids.length) { targetId = ids[(ids.indexOf(targetId)+1)%ids.length];selectedTrial = null;refresh(); } },
     resetPosition() { before = null; trialState.reset(); },
     update(dt, time, player, camera) {
       if (!before) before = {...player};
@@ -170,7 +171,14 @@ export function createMission(scene, world, save, feedback) {
         ring.scale.setScalar(current?1+Math.sin(time*3)*.04:1);
       }));
       const friend = friends[targetId];
-      const target = objectiveFor(friend, save, player, feathers, active, selectedTrial);
+      const target = (!active&&feedback.objective?.()) || objectiveFor(friend, save, player, feathers, active, selectedTrial);
+      if(target.kind==='mischief'){
+        document.getElementById('mission-label').textContent='MARKET MISCHIEF';
+        document.getElementById('mission-title').textContent=target.title;
+        document.getElementById('mission-description').textContent=target.tip;
+        document.getElementById('flock-count').textContent=`${target.progress} / 3`;
+        document.getElementById('mission-fill').style.width=`${target.progress/3*100}%`;
+      }else if(currentObjective?.kind==='mischief')refresh();
       currentObjective = target;
       const distance=Math.hypot(target.x-player.x,target.z-player.z);
       const height=target.y-player.y;

@@ -1,7 +1,7 @@
-import { createJourney } from './playtest.js';
+import { createJourney, createMischiefJourney } from './playtest.js';
 // Development-only fixtures exercise the real input/simulation/render/mission loop.
 // This module is tree-shaken out of production; QA uses an isolated in-memory save.
-export function createQA({player,mission,start,save,setCamera,resume,feedback}) {
+export function createQA({player,mission,start,save,setCamera,resume,feedback,mischief}) {
   const panel=document.createElement('aside');panel.id='qa-panel';
   panel.style.cssText='position:fixed;right:8px;bottom:8px;z-index:100;background:#172c29ed;color:white;padding:10px;font:10px monospace;width:265px;border-radius:6px;pointer-events:auto';
   panel.innerHTML='<b>DEV PLAYTEST · isolated save</b><div id="qa-buttons"></div><pre id="qa-status" style="white-space:pre-wrap"></pre>';
@@ -12,6 +12,8 @@ export function createQA({player,mission,start,save,setCamera,resume,feedback}) 
   function button(label,action){const b=document.createElement('button');b.textContent=label;b.style.cssText='font:10px monospace;margin:4px 3px 0 0;padding:5px;border-radius:3px';b.onclick=action;if(label==='Collapse QA'){b.onclick=()=>{panel.classList.toggle('collapsed');b.textContent=panel.classList.contains('collapsed')?'Expand QA':'Collapse QA';};panel.prepend(b);}else panel.querySelector('#qa-buttons').append(b);}
   button('Collapse QA',()=>{panel.classList.toggle('collapsed');});
   button('Full journey',()=>{fixture({x:20,y:0,z:7,yaw:-Math.PI/2});journey=createJourney(player,mission,save);run='journey';output='Full journey with real movement and pickups';});
+  button('Market mischief',()=>{fixture({x:20,y:0,z:7,yaw:-Math.PI/2});journey=createMischiefJourney(player,mission,mischief.game);run='journey';output='Real-input market mischief playthrough';});
+  button('Sandwich cart',()=>{fixture({x:23,y:0,z:-9.5,yaw:2.7});setCamera(3.4);output='Cart interaction · honk to borrow lunch';});
   button('Mallard portrait',()=>{fixture({x:20,y:0,z:7,yaw:.35});setCamera(-1.1);output='Mallard silhouette · idle and honk';});
   button('Launch + glide',()=>{fixture({x:20,y:0,z:7,yaw:-Math.PI/2});api.input={...neutral(),z:-1,jump:true};run='launch';output='Launching via held input…';});
   button('Rooftop landing',()=>{fixture({x:-40,y:16,z:-29,yaw:Math.PI},'fly');player.state.speed=3;api.input={...neutral(),z:1};run='roof';output='Braking toward market roof…';});

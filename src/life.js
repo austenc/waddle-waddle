@@ -9,9 +9,9 @@ export function createCityLife(scene) {
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   scene.add(mesh);
   const matrix = new THREE.Object3D(), tint = new THREE.Color();
-  const birds = Array.from({ length: 24 }, (_, i) => {
-    const cluster = [[-22,17],[-31,-18],[18,-42],[22,39]][Math.floor(i/6)];
-    return { x: cluster[0]+Math.sin(i*7)*3, z: cluster[1]+Math.cos(i*3)*2, y: 0, yaw: i*2.4, home: cluster, flight: 0, seed: i*.73 };
+  const birds = Array.from({ length: 30 }, (_, i) => {
+    const cluster = [[-22,17],[-31,-18],[18,-42],[22,39],[19,6]][Math.floor(i/6)];
+    return { id:i, x: i>=24?18.2+(i%2)*.6:cluster[0]+Math.sin(i*7)*3, z: i>=24?3.5+(i-24)*.7:cluster[1]+Math.cos(i*3)*2, y: 0, yaw: i*2.4, home: cluster, flight: 0, seed: i*.73 };
   });
   let count = 0, scared = 0, cooldown = 0;
   function part(x,y,z,w,h,d,color,ry=0,rz=0) {
@@ -28,6 +28,14 @@ export function createCityLife(scene) {
   }
   return {
     honk,
+    splash(player) {
+      if(player.mode!=='swim')return [];
+      const ids=[];
+      for(const b of birds)if(b.id>=24&&b.flight<=0&&Math.hypot(player.x-b.x,player.z-b.z)<4.8) {
+        b.flight=4;b.yaw=Math.atan2(b.x-player.x,b.z-player.z);ids.push(b.id);
+      }
+      return ids;
+    },
     update(dt,time,player,save) {
       count=0;cooldown=Math.max(0,cooldown-dt);
       for (const b of birds) {
@@ -38,7 +46,7 @@ export function createCityLife(scene) {
         } else {
           b.y=0;
           const dx=b.home[0]-b.x,dz=b.home[1]-b.z;
-          if(Math.hypot(dx,dz)>4){b.yaw=Math.atan2(dx,dz);b.x+=Math.sin(b.yaw)*dt*.6;b.z+=Math.cos(b.yaw)*dt*.6;}
+          if(Math.hypot(dx,dz)>(b.id>=24?.7:4)){b.yaw=Math.atan2(dx,dz);b.x+=Math.sin(b.yaw)*dt*.6;b.z+=Math.cos(b.yaw)*dt*.6;}
           else b.yaw+=Math.sin(time*.4+b.seed)*dt*.2;
         }
         const fx=Math.sin(b.yaw),fz=Math.cos(b.yaw),peck=b.flight?0:Math.max(0,Math.sin(time*2+b.seed))*.08;

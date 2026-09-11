@@ -24,7 +24,7 @@
   <div id="hud" class="hud-hidden" aria-hidden="true">
     <header class="hud-header"><div class="brand">ducks<span>MALLARD CITY</span></div><div id="location">Willow Park</div></header>
     <section id="mission">
-      <div class="mission-kicker">YOUR FLOCK <span id="flock-count">0 / 5</span></div>
+      <div class="mission-kicker"><span id="mission-label">YOUR FLOCK</span> <span id="flock-count">0 / 5</span></div>
       <h2 id="mission-title"></h2><p id="mission-description"></p>
       <div class="mission-progress"><span id="mission-fill"></span></div>
       <div id="next-friend"></div>
@@ -33,6 +33,7 @@
     <div class="hud-actions"><button id="journal-btn" title="Field notes (J)">Field notes <kbd>J</kbd></button><button id="pause-btn" aria-label="Pause game">Ⅱ</button></div>
     <div id="waypoint"></div><div id="interaction"></div><div id="trial"></div>
     <div id="flight-meter"><span>WING POWER</span><div><i id="stamina-fill"></i></div></div>
+    <aside id="mischief-card" hidden><small>OPTIONAL ADVENTURE</small><strong>Market mischief</strong><p></p></aside>
     <div id="context-hint"></div>
     <div class="controls-strip" id="controls-strip"><span><kbd>W A S D</kbd> move</span><span><kbd>SPACE</kbd> hold to fly</span><span><kbd>H</kbd> honk</span><span><kbd>DRAG</kbd> look around</span></div>
   </div>
@@ -48,12 +49,13 @@
     <label class="setting"><span>Reduced motion</span><input type="checkbox" id="motion-setting" /></label>
     <label class="setting"><span>Always show touch controls</span><input type="checkbox" id="touch-setting" /></label>
     <p class="fine" id="save-note">Saved on this device.</p>
-    <details><summary>Start over</summary><p class="fine">This clears your flock, feathers, and best trail times on this device.</p><button id="reset-btn" class="secondary">Start a fresh adventure</button></details>
+    <details><summary>Start over</summary><p class="fine">This clears your flock, feathers, mischief, and best trail times on this device.</p><button id="reset-btn" class="secondary">Start a fresh adventure</button></details>
   </dialog>
   <dialog id="journal-dialog">
     <div class="dialog-top"><p class="dialog-kicker">A MALLARD’S FIELD NOTES</p><button id="journal-close" class="icon-btn" aria-label="Close field notes">×</button></div>
     <h2>A few familiar faces.</h2><p>Choose a friend to follow their marker.</p><div id="journal-list"></div>
     <h3>Take the scenic route</h3><p class="fine">Enter a glowing first ring to start a trail. Follow rings in order. Blue trails are for swimming; gold is for flying. Your best times are saved.</p><div id="trial-records"></div>
+    <h3>A little market mischief</h3><p class="fine" id="mischief-note"></p><button class="secondary" id="mischief-track">Follow the crumbs ↗</button>
     <h3>A little flight school</h3>
     <p class="fine" id="flight-guide">WASD moves on the ground. Hold Space to take flight and climb; release to glide. A/D always turns in flight. S brakes and descends for a landing. C dives. Shift gives a short boost. Double-tap A/D to roll. Drag the view or use Q/E to look around. H calls a friend. Esc pauses.</p>
   </dialog>
