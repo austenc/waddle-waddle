@@ -12,17 +12,19 @@ export function createTouchControls(controls) {
     </div>
     <div class="touch-actions">
       <div class="fly-stack is-grounded" id="fly-stack">
-        <button type="button" class="fly-pad" id="jump-pad" aria-label="Jump or glide">
-          <span class="fly-pad-label">JUMP</span>
+        <button type="button" class="fly-pad" id="jump-pad" aria-label="Hold to fly and climb">
+          <span class="fly-pad-label">FLY</span>
         </button>
         <div class="roll-row">
+          <button type="button" class="dive-pad" id="dive-pad" aria-label="Descend">DOWN</button>
           <button type="button" class="roll-pad" id="roll-left" aria-label="Barrel roll left">◀</button>
           <button type="button" class="roll-pad" id="roll-right" aria-label="Barrel roll right">▶</button>
         </div>
       </div>
+      <div class="fly-stack"><button type="button" class="boost-pad" id="boost-pad" aria-label="Hold to boost">BOOST</button>
       <button type="button" class="honk-pad" id="honk-pad" aria-label="Honk">
         <span class="honk-pad-label">HONK</span>
-      </button>
+      </button></div>
     </div>
   `;
   document.body.appendChild(root);
@@ -36,17 +38,19 @@ export function createTouchControls(controls) {
   const flyStack = root.querySelector('#fly-stack');
 
   const MAX = 46;
-  let joyPointerId = null;
+  let joyPointerId = null, forced = false, active = false;
 
   function isTouchDevice() {
     return (
-      window.matchMedia('(pointer: coarse)').matches ||
+      forced || window.matchMedia('(pointer: coarse)').matches ||
       window.matchMedia('(hover: none)').matches ||
       navigator.maxTouchPoints > 0
     );
   }
 
   function setActive(on) {
+    active = on;
+    document.body.classList.toggle('has-touch-controls', on && isTouchDevice());
     if (on && isTouchDevice()) {
       root.classList.add('is-active');
       root.setAttribute('aria-hidden', 'false');
@@ -56,6 +60,10 @@ export function createTouchControls(controls) {
       controls.clearTouchMove();
       controls.setTouchHonk(false);
       controls.setTouchGlide(false);
+      controls.setTouchDive(false);
+      controls.setTouchBoost(false);
+      joyPointerId = null;
+      root.querySelectorAll('.is-held').forEach(el => el.classList.remove('is-held'));
       knob.style.transform = 'translate(-50%, -50%)';
     }
   }
@@ -63,8 +71,8 @@ export function createTouchControls(controls) {
   function setFlying(flying) {
     flyStack.classList.toggle('is-flying', flying);
     flyStack.classList.toggle('is-grounded', !flying);
-    jumpPad.querySelector('.fly-pad-label').textContent = flying ? 'GLIDE' : 'JUMP';
-    if (!flying) controls.setTouchGlide(false);
+    jumpPad.querySelector('.fly-pad-label').textContent = flying ? 'CLIMB' : 'FLY';
+
   }
 
   function readJoy(clientX, clientY) {
@@ -97,7 +105,7 @@ export function createTouchControls(controls) {
   });
 
   joy.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== joyPointerId) return;
+    if (e.pointerId !== joyPointerId || !active) return;
     e.preventDefault();
     readJoy(e.clientX, e.clientY);
   });
@@ -158,6 +166,14 @@ export function createTouchControls(controls) {
   bindRoll(rollLeft, -1);
   bindRoll(rollRight, 1);
 
+  const boost = root.querySelector('#boost-pad');
+  boost.addEventListener('pointerdown', e => { e.preventDefault(); boost.setPointerCapture(e.pointerId); controls.setTouchBoost(true); });
+  for (const event of ['pointerup', 'pointercancel']) boost.addEventListener(event, () => controls.setTouchBoost(false));
+
+  const dive = root.querySelector('#dive-pad');
+  dive.addEventListener('pointerdown', e => { e.preventDefault(); dive.setPointerCapture(e.pointerId); controls.setTouchDive(true); });
+  for (const event of ['pointerup', 'pointercancel']) dive.addEventListener(event, () => controls.setTouchDive(false));
+
   root.addEventListener(
     'touchmove',
     (e) => {
@@ -169,6 +185,7 @@ export function createTouchControls(controls) {
   return {
     root,
     setActive,
+    setForced(on) { forced = on; setActive(active); },
     setFlying,
     isTouchDevice,
   };

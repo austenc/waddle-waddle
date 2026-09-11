@@ -1,41 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
-    />
-    <title>Ducks</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/src/styles.css" />
-  </head>
-  <body>
-    <div id="splash">
-      <div class="splash-veil"></div>
-      <div class="splash-panel">
-        <p class="splash-eyebrow">you are a mallard</p>
-        <h1 class="splash-title">DUCKS</h1>
-        <p class="splash-tag">Waddle the park. Take flight. Quack without shame.</p>
-        <button type="button" id="start-btn" class="splash-btn">Start waddling</button>
-        <p class="splash-enter">or press Enter · tap on phones</p>
-      </div>
-    </div>
-
-    <div id="build-version" aria-label="Build version"></div>
-
-    <div id="hud" class="hud-hidden" aria-hidden="true">
-      <div class="brand">DUCKS</div>
-      <div class="hint hint-desktop">Space hop · ×2 fly · W thrust · S brake · A/D bank · hold Space glide · A/D×2 roll</div>
-      <div class="hint hint-mobile">JUMP×2 fly · stick thrust/bank · hold GLIDE · ◀▶ roll</div>
-    </div>
-
-    <div id="app"></div>
-    <script type="module" src="/src/main.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#294c44" />
+  <title>Ducks — A Little City Adventure</title>
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <div id="app"></div>
+  <div id="splash">
+    <div class="splash-veil"></div>
+    <section class="splash-panel">
+      <div class="edition"><span class="edition-mark">✦</span> A LITTLE CITY ADVENTURE <span>VOL. 01</span></div>
+      <p class="splash-eyebrow">Small wings. Big world.</p>
+      <h1>DUCKS<span>MALLARD CITY</span></h1>
+      <p class="splash-tag">The city is waking up.<br>Your friends are somewhere out there.</p>
+      <button id="start-btn" class="primary">Find your flock <span>↗</span></button>
+      <p class="splash-enter">A gentle adventure about finding your way home.</p>
+      <div class="splash-footer"><span>WADDLE · PADDLE · SOAR</span><span>NO WRONG TURNS</span></div>
+    </section>
+  </div>
+  <div id="hud" class="hud-hidden" aria-hidden="true">
+    <header class="hud-header"><div class="brand">ducks<span>MALLARD CITY</span></div><div id="location">Willow Park</div></header>
+    <section id="mission">
+      <div class="mission-kicker">YOUR FLOCK <span id="flock-count">0 / 5</span></div>
+      <h2 id="mission-title"></h2><p id="mission-description"></p>
+      <div class="mission-progress"><span id="mission-fill"></span></div>
+      <div id="next-friend"></div>
+    </section>
+    <div class="map-wrap"><canvas id="minimap" width="240" height="240" role="img" aria-label="North-up city map. Gold dots: friends. Blue rings: trails. Green dot: home."></canvas><div class="map-caption">FEATHERS <span id="feather-count">0 / 18</span></div></div>
+    <div class="hud-actions"><button id="journal-btn" title="Field notes (J)">Field notes <kbd>J</kbd></button><button id="pause-btn" aria-label="Pause game">Ⅱ</button></div>
+    <div id="waypoint"></div><div id="interaction"></div><div id="trial"></div>
+    <div id="flight-meter"><span>WING POWER</span><div><i id="stamina-fill"></i></div></div>
+    <div id="context-hint"></div>
+    <div class="controls-strip" id="controls-strip"><span><kbd>W A S D</kbd> move</span><span><kbd>SPACE</kbd> hold to fly</span><span><kbd>H</kbd> honk</span><span><kbd>DRAG</kbd> look around</span></div>
+  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="build-version"></div>
+  <dialog id="pause-dialog">
+    <p class="dialog-kicker">TAKE A BREATHER</p><h2>The city can wait.</h2>
+    <p>Your flock and feathers are saved automatically.</p>
+    <button id="resume-btn" class="primary">Back to the adventure ↗</button>
+    <button id="home-btn" class="secondary">Return to Willow Park</button>
+    <label class="setting"><span>Sound & ambience</span><input type="checkbox" id="sound-setting" checked /></label>
+    <label class="setting"><span>Gentle music</span><input type="checkbox" id="music-setting" checked /></label>
+    <label class="setting"><span>Reduced motion</span><input type="checkbox" id="motion-setting" /></label>
+    <label class="setting"><span>Always show touch controls</span><input type="checkbox" id="touch-setting" /></label>
+    <p class="fine" id="save-note">Saved on this device.</p>
+    <details><summary>Start over</summary><p class="fine">This clears your flock, feathers, and best trail times on this device.</p><button id="reset-btn" class="secondary">Start a fresh adventure</button></details>
+  </dialog>
+  <dialog id="journal-dialog">
+    <div class="dialog-top"><p class="dialog-kicker">A MALLARD’S FIELD NOTES</p><button id="journal-close" class="icon-btn" aria-label="Close field notes">×</button></div>
+    <h2>A few familiar faces.</h2><p>Choose a friend to follow their marker.</p><div id="journal-list"></div>
+    <h3>Take the scenic route</h3><p class="fine">Enter a glowing first ring to start a trail. Follow rings in order. Blue trails are for swimming; gold is for flying. Your best times are saved.</p><div id="trial-records"></div>
+    <h3>A little flight school</h3>
+    <p class="fine" id="flight-guide">WASD moves on the ground. Hold Space to take flight and climb; release to glide. A/D always turns in flight. S brakes and descends for a landing. C dives. Shift gives a short boost. Double-tap A/D to roll. Drag the view or use Q/E to look around. H calls a friend. Esc pauses.</p>
+  </dialog>
+  <dialog id="ending">
+    <p class="dialog-kicker">EVERYBODY’S HOME</p><div class="ending-emblem">✦</div><h2>Small wings.<br>A whole world of friends.</h2>
+    <p>Five familiar voices. One very cozy nest.<br>Turns out, home was worth the adventure.</p>
+    <button id="ending-close" class="primary">Stay a little longer ↗</button><p class="fine">There are still trails to master and feathers to find.</p>
+  </dialog>
+  <script type="module" src="/src/main.js"></script>
+</body>
 </html>

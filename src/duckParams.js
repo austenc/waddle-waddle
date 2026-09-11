@@ -15,15 +15,15 @@ export const DUCK_COLOR_KEYS = [
 
 export const DEFAULT_DUCK_PARAMS = {
   colors: {
-    head: '#1f6b3a',
-    body: '#a86b2d',
-    chest: '#c9a06a',
-    beak: '#e8a020',
+    head: '#176d43',
+    body: '#bfc0b5',
+    chest: '#713a2d',
+    beak: '#e5bc38',
     eye: '#1a1a1a',
-    wing: '#8a5520',
-    wingTip: '#2a2a2a',
+    wing: '#85877b',
+    wingTip: '#353b39',
     foot: '#e07020',
-    tail: '#3a2a18',
+    tail: '#253732',
     collar: '#ffffff',
   },
 
@@ -38,14 +38,14 @@ export const DEFAULT_DUCK_PARAMS = {
 
     // Idle
     idleBobSpeed: 2.2,
-    idleBobAmount: 0.025,
+    idleBobAmount: 0.008,
     idleHeadBob: 0.015,
 
     // Waddle
     waddleSpeed: 13,
-    waddleTilt: 0.32,
+    waddleTilt: 0.18,
     waddlePitch: 0.08,
-    waddleHop: 0.16,
+    waddleHop: 0.09,
     waddleSquash: 0.12,
     waddleFootSwing: 1.05,
     waddleWingBase: 0.25,
@@ -59,16 +59,16 @@ export const DEFAULT_DUCK_PARAMS = {
     hopLean: -0.2,
 
     // Flight flap
-    flapBaseRate: 12,
-    flapThrottleRate: 14,
-    flapWingBase: 0.45,
-    flapWingAmp: 0.75,
+    flapBaseRate: 15,
+    flapThrottleRate: 6,
+    flapWingBase: 0.12,
+    flapWingAmp: 0.62,
     flapWingPitch: 0.18,
     flapBob: 0.05,
 
     // Glide
     glideFlapRate: 5,
-    glideWingSpread: 0.95,
+    glideWingSpread: 0.06,
     glideWingPitch: 0.05,
     glideBob: 0.03,
     glideBankAmount: 0.28,

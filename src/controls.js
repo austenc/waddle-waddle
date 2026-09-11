@@ -1,202 +1,47 @@
-/** Keyboard + on-screen touch controls for waddle, flight, and honk. */
+/** Input adapter; simulation receives the same normalized input on all devices. */
 export function createControls() {
   const keys = new Set();
-  let touchX = 0;
-  let touchZ = 0;
-  let touchActive = false;
-  let touchHonkDown = false;
-  let touchJump = false;
-  let touchGlide = false;
-  let touchBank = 0;
-  let touchThrottle = 0;
-  let touchFlightActive = false;
-  let honkHeld = false;
-  let jumpHeld = false;
-
-  /** Double-tap A/D → barrel roll */
-  const DOUBLE_TAP_MS = 260;
-  let lastTapA = 0;
-  let lastTapD = 0;
-  let pendingRoll = 0; // -1 left, +1 right
-
-  const onDown = (e) => {
-    if (!e.repeat) {
-      const now = performance.now();
-      if (e.code === 'KeyA' || e.code === 'ArrowLeft') {
-        if (now - lastTapA < DOUBLE_TAP_MS) pendingRoll = -1;
-        lastTapA = now;
-      }
-      if (e.code === 'KeyD' || e.code === 'ArrowRight') {
-        if (now - lastTapD < DOUBLE_TAP_MS) pendingRoll = 1;
-        lastTapD = now;
-      }
-    }
-
+  let touchX = 0, touchZ = 0, touchHonk = false, touchJump = false, touchGlide = false;
+  let honkPending = false, jumpPending = false, pendingRoll = 0;
+  let touchBoost = false, touchDive = false;
+  const taps = { left: -Infinity, right: -Infinity };
+  const codes = new Set(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyW','KeyA','KeyS','KeyD','ShiftLeft','ShiftRight','KeyQ','KeyE']);
+  function onDown(e) {
+    if (e.target instanceof HTMLElement && (e.target.matches('input, textarea, select') || e.target.closest('dialog') || e.target.isContentEditable)) return;
+    if (codes.has(e.code)) e.preventDefault();
     keys.add(e.code);
-    if (
-      [
-        'ArrowUp',
-        'ArrowDown',
-        'ArrowLeft',
-        'ArrowRight',
-        'Space',
-        'KeyW',
-        'KeyA',
-        'KeyS',
-        'KeyD',
-        'ShiftLeft',
-        'ShiftRight',
-      ].includes(e.code)
-    ) {
-      e.preventDefault();
-    }
-  };
-  const onUp = (e) => keys.delete(e.code);
-
-  window.addEventListener('keydown', onDown);
-  window.addEventListener('keyup', onUp);
-
+    if (e.repeat) return;
+    if (e.code === 'Space') jumpPending = true;
+    if (e.code === 'KeyH') honkPending = true;
+    const side = ['KeyA', 'ArrowLeft'].includes(e.code) ? 'left' : ['KeyD', 'ArrowRight'].includes(e.code) ? 'right' : null;
+    if (side) { const now = performance.now(); if (now - taps[side] < 260) pendingRoll = side === 'left' ? -1 : 1; taps[side] = now; }
+  }
+  const onUp = e => keys.delete(e.code);
+  function clear() {
+    keys.clear(); touchX = touchZ = 0; touchHonk = touchJump = touchGlide = touchBoost = touchDive = false;
+    honkPending = jumpPending = false; pendingRoll = 0; taps.left = taps.right = -Infinity;
+  }
+  window.addEventListener('keydown', onDown); window.addEventListener('keyup', onUp); window.addEventListener('blur', clear);
   return {
-    keys,
-    dispose() {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-    },
-    isDown(code) {
-      return keys.has(code);
-    },
-
-    setTouchMove(x, z) {
-      const len = Math.hypot(x, z);
-      if (len < 0.12) {
-        touchX = 0;
-        touchZ = 0;
-        touchActive = false;
-        touchBank = 0;
-        touchThrottle = 0;
-        touchFlightActive = false;
-        return;
-      }
-      const inv = 1 / Math.max(len, 1);
-      touchX = x * inv;
-      touchZ = z * inv;
-      touchActive = true;
-      // Flight stick: X = bank, up = throttle
-      touchBank = touchX;
-      touchThrottle = -touchZ;
-      touchFlightActive = true;
-    },
-
-    clearTouchMove() {
-      touchX = 0;
-      touchZ = 0;
-      touchActive = false;
-      touchBank = 0;
-      touchThrottle = 0;
-      touchFlightActive = false;
-    },
-
-    setTouchHonk(down) {
-      touchHonkDown = down;
-    },
-
-    requestTouchJump() {
-      touchJump = true;
-    },
-
-    setTouchGlide(down) {
-      touchGlide = down;
-    },
-
-    requestTouchBarrelRoll(dir = 1) {
-      pendingRoll = dir >= 0 ? 1 : -1;
-    },
-
-    /** Ground / hop: camera-relative WASD. */
-    getMoveVector() {
-      let x = 0;
-      let z = 0;
-      if (keys.has('KeyW') || keys.has('ArrowUp')) z -= 1;
-      if (keys.has('KeyS') || keys.has('ArrowDown')) z += 1;
-      if (keys.has('KeyA') || keys.has('ArrowLeft')) x -= 1;
-      if (keys.has('KeyD') || keys.has('ArrowRight')) x += 1;
-
-      if (touchActive) {
-        x = touchX;
-        z = touchZ;
-      }
-
-      const len = Math.hypot(x, z);
-      if (len > 0) {
-        x /= len;
-        z /= len;
-      }
-      return { x, z, moving: len > 0 };
-    },
-
-    /**
-     * Flight: bank (A/D), throttle (W/S).
-     * W = +throttle (thrust forward). S = −throttle (brake).
-     */
-    getFlightAxes() {
-      let bank = 0;
-      let throttle = 0;
-
-      if (keys.has('KeyA') || keys.has('ArrowLeft')) bank -= 1;
-      if (keys.has('KeyD') || keys.has('ArrowRight')) bank += 1;
-      if (keys.has('KeyW') || keys.has('ArrowUp')) throttle += 1;
-      if (keys.has('KeyS') || keys.has('ArrowDown')) throttle -= 1;
-
-      if (touchFlightActive) {
-        bank = touchBank;
-        throttle = touchThrottle;
-      }
-
-      return {
-        bank: Math.max(-1, Math.min(1, bank)),
-        throttle: Math.max(-1, Math.min(1, throttle)),
-      };
-    },
-
-    isGliding() {
-      return keys.has('Space') || touchGlide;
-    },
-
-    syncJumpLatch() {
-      jumpHeld = keys.has('Space') || touchGlide;
-    },
-
-    consumeJump() {
-      const pressed = keys.has('Space') || touchJump;
-      touchJump = false;
-      if (pressed) {
-        if (!jumpHeld) {
-          jumpHeld = true;
-          return true;
-        }
-        return false;
-      }
-      jumpHeld = keys.has('Space');
-      return false;
-    },
-
-    consumeBarrelRoll() {
-      const dir = pendingRoll;
-      pendingRoll = 0;
-      return dir;
-    },
-
-    consumeHonk() {
-      const pressed = keys.has('KeyH') || keys.has('ShiftLeft') || touchHonkDown;
-      if (pressed) {
-        if (!honkHeld) {
-          honkHeld = true;
-          return true;
-        }
-        return false;
-      }
-      honkHeld = false;
-      return false;
+    keys, clear,
+    isDown: code => keys.has(code),
+    dispose() { window.removeEventListener('keydown', onDown); window.removeEventListener('keyup', onUp); window.removeEventListener('blur', clear); },
+    setTouchMove(x, z) { const length = Math.max(1, Math.hypot(x, z)); touchX = x / length; touchZ = z / length; },
+    clearTouchMove() { touchX = touchZ = 0; },
+    setTouchHonk(on) { if (on && !touchHonk) honkPending = true; touchHonk = on; },
+    requestTouchJump() { jumpPending = true; touchJump = true; },
+    setTouchGlide(on) { touchGlide = on; if (!on) touchJump = false; },
+    setTouchBoost(on) { touchBoost = on; },
+    setTouchDive(on) { touchDive = on; },
+    requestTouchBarrelRoll(dir) { pendingRoll = dir; },
+    consumeHonk() { const value = honkPending; honkPending = false; return value; },
+    read() {
+      let x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0);
+      let z = (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0) - (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0);
+      if (Math.hypot(touchX, touchZ) > 0.08) { x = touchX; z = touchZ; }
+      const length = Math.max(1, Math.hypot(x, z));
+      const input = { x: x / length, z: z / length, jump: keys.has('Space') || touchJump || touchGlide, jumpPressed: jumpPending, boost: keys.has('ShiftLeft') || keys.has('ShiftRight') || touchBoost, dive: keys.has('KeyC') || touchDive, roll: pendingRoll };
+      jumpPending = false; pendingRoll = 0; return input;
     },
   };
 }
